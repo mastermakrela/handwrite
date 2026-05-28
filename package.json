@@ -1,0 +1,32 @@
+{
+  "name": "handwrite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Turn your real handwriting into a usable Unicode font (OTF/TTF/WOFF2) — on-device, privacy-first.",
+  "scripts": {
+    "proof:font": "bun proofs/01-opentype-font.ts",
+    "proof:stroke": "bun proofs/02-stroke-to-glyph.ts",
+    "proof:variation": ".venv/bin/python proofs/03-calt-variation.py",
+    "proof:curvefit": "bun proofs/05-curvefit-metrics.ts",
+    "template": "bun proofs/04-generate-template.ts",
+    "proof:all": "bun run proof:font && bun run proof:stroke && bun run proof:variation && bun run proof:curvefit && bun run template",
+    "validate": ".venv/bin/python proofs/validate.py proofs/out/proof-a.otf proofs/out/proof-c.otf proofs/out/proof-e.otf proofs/out/proof-b.ttf",
+    "photo": ".venv/bin/python proofs/photo/process.py",
+    "dev": "bun app/server.ts",
+    "capture:build": "bun app/build.ts",
+    "capture:smoke": "bun app/smoke.ts",
+    "capture:verify": "bun app/build.ts && bun app/verify-bundle.ts"
+  },
+  "dependencies": {
+    "opentype.js": "^2.0.0",
+    "perfect-freehand": "^1.2.3",
+    "polygon-clipping": "^0.15.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "@types/node": "^22.0.0",
+    "@types/opentype.js": "^1.3.10",
+    "typescript": "^5.6.0"
+  }
+}

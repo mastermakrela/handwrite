@@ -1,0 +1,26 @@
+node_modules/
+.svelte-kit/
+build/
+dist/
+*.log
+
+# Generated fonts from proofs (keep the scripts, not the binaries)
+proofs/out/*.otf
+proofs/out/*.ttf
+proofs/out/*.woff2
+proofs/out/*.svg
+
+# Generated artifacts (regenerable from sources / captured data)
+/handwrite-capture.html
+/MyHandwriting.otf
+/demo.html
+docs/myfont-specimen.svg
+
+# Keep handwriting-strokes.json — it's real captured source data, not generated.
+
+# Python
+__pycache__/
+.venv/
+venv/
+
+.DS_Store

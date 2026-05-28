@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>handwrite — feasibility, proofs & plan</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --ink: #18203a;
+    --body: #3a4258;
+    --muted: #7a8499;
+    --line: #e6e9f2;
+    --accent: #3b3f9e;     /* ink indigo */
+    --accent-soft: #ecedfb;
+    --pass: #0b6e4f;
+    --pass-soft: #e3f3ec;
+    --warn: #9a5b12;
+    --warn-soft: #fbf0df;
+    --fatal: #a52218;
+    --fatal-soft: #fae6e3;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(24,32,58,.04), 0 8px 24px rgba(24,32,58,.06);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--body);
+    background: var(--bg);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 22px 96px; }
+  h1, h2, h3, h4 { color: var(--ink); line-height: 1.25; letter-spacing: -.01em; }
+  h2 { font-size: 1.5rem; margin: 2.6em 0 .2em; padding-top: .4em; }
+  h3 { font-size: 1.12rem; margin: 1.8em 0 .4em; }
+  p { margin: .7em 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .88em; }
+  code { background: #f0f1f7; padding: .1em .38em; border-radius: 6px; color: #2b3252; }
+  small { color: var(--muted); }
+
+  /* hero */
+  header.hero {
+    background: linear-gradient(160deg, #1d2347 0%, #2a2f6e 55%, #3b3f9e 100%);
+    color: #eef0fb;
+    padding: 64px 0 54px;
+    border-bottom: 1px solid #11142e;
+  }
+  header.hero .wrap { padding-bottom: 0; }
+  .wordmark {
+    font-family: "Snell Roundhand", "Segoe Script", "Bradley Hand", "Brush Script MT", cursive;
+    font-size: 3.6rem; line-height: 1; color: #fff; margin: 0 0 .1em; font-weight: 600;
+  }
+  header.hero .sub { font-size: 1.18rem; color: #c6c9ee; margin: 0; max-width: 60ch; }
+  header.hero .meta { margin-top: 22px; font-size: .85rem; color: #a7abdb; }
+  .hero-badges { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 10px; }
+
+  /* pills / chips */
+  .pill { display: inline-flex; align-items: center; gap: 7px; font-size: .78rem; font-weight: 600;
+    padding: 5px 12px; border-radius: 999px; letter-spacing: .01em; }
+  .pill.dark { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+  .pill.pass { background: var(--pass-soft); color: var(--pass); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.fatal { background: var(--fatal-soft); color: var(--fatal); }
+  .pill.accent { background: var(--accent-soft); color: var(--accent); }
+
+  /* cards & callouts */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px 24px; box-shadow: var(--shadow); margin: 18px 0; }
+  .callout { border-left: 4px solid var(--accent); background: var(--accent-soft);
+    border-radius: 10px; padding: 14px 18px; margin: 18px 0; }
+  .callout.pass { border-color: var(--pass); background: var(--pass-soft); }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout.fatal { border-color: var(--fatal); background: var(--fatal-soft); }
+  .callout p:first-child { margin-top: 0; } .callout p:last-child { margin-bottom: 0; }
+  .callout .lbl { font-weight: 700; color: var(--ink); }
+
+  /* TOC */
+  nav.toc { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 22px; margin: 26px 0; box-shadow: var(--shadow); }
+  nav.toc ol { margin: 6px 0 0; padding-left: 1.2em; columns: 2; column-gap: 32px; }
+  nav.toc li { margin: 3px 0; }
+  @media (max-width: 620px){ nav.toc ol { columns: 1; } .wordmark { font-size: 2.8rem; } }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; background: #fafbfe; }
+  tbody tr:hover { background: #fafbff; }
+
+  /* figures */
+  figure { margin: 18px 0; }
+  figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line);
+    border-radius: 12px; background: #fff; }
+  figcaption { font-size: .85rem; color: var(--muted); margin-top: 8px; text-align: center; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 620px){ .two { grid-template-columns: 1fr; } }
+
+  /* pipeline diagram */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; font-size: .85rem; }
+  .node { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+    box-shadow: var(--shadow); }
+  .node.in { border-color: #c9cdf2; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .node.out { border-color: #bfe3d3; background: var(--pass-soft); color: var(--pass); font-weight: 600; }
+  .arrow { color: var(--muted); font-weight: 700; }
+
+  ul.tight li { margin: .3em 0; }
+  .grid-proof { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px,1fr)); gap: 12px; margin: 16px 0; }
+  .proofcard { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; box-shadow:var(--shadow); }
+  .proofcard .t { font-weight:700; color:var(--ink); font-size:.95rem; }
+  .proofcard .m { font-size:.82rem; color:var(--muted); margin:4px 0 8px; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 40px 0; }
+  .src { font-size: .82rem; color: var(--muted); }
+  .src a { color: #5358b0; }
+  .resp { font-size:.72rem; font-weight:700; padding:3px 8px; border-radius:6px; white-space:nowrap; }
+  .resp.fixed { background: var(--pass-soft); color: var(--pass); }
+  .resp.reframed { background: var(--accent-soft); color: var(--accent); }
+  .resp.conceded { background: var(--warn-soft); color: var(--warn); }
+  .resp.open { background: var(--fatal-soft); color: var(--fatal); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="wordmark">handwrite</div>
+    <p class="sub">Turning your real handwriting into a usable Unicode font — a feasibility study, working proofs, an adversarial review, and an honest plan.</p>
+    <div class="hero-badges">
+      <span class="pill dark">✅ Font engine — proven in code</span>
+      <span class="pill dark">⚠️ "Looks like me?" — unproven (kill-gate)</span>
+      <span class="pill dark">⚖️ Verdict: pivot, don't sprint</span>
+    </div>
+    <p class="meta">Prepared for Krzysztof · 28 May 2026 · 5 runnable proofs · 8-dimension research · 5-lens adversarial panel</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <strong style="color:var(--ink)">Contents</strong>
+  <ol>
+    <li><a href="#tldr">The short version</a></li>
+    <li><a href="#vision">The vision</a></li>
+    <li><a href="#proved">What we proved (with code)</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#research">Research findings</a></li>
+    <li><a href="#adversary">The adversarial review</a></li>
+    <li><a href="#addressed">How I addressed it</a></li>
+    <li><a href="#plan">The revised plan</a></li>
+    <li><a href="#recommend">Recommendation</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================= -->
+<h2 id="tldr">The short version</h2>
+
+<p>Your idea — <em>“I want my handwriting as a Unicode font I can type with anywhere”</em> — is
+<strong>technically very doable</strong>. I proved the whole font-production chain with running,
+independently-validated code (below). The honest catches are not where you'd expect:</p>
+
+<div class="callout pass">
+  <p><span class="lbl">What's genuinely solved:</span> building a valid font in the browser, capturing
+  a pen stroke into a glyph, real <code>.ttf</code>/<code>.woff2</code> export, and natural
+  per-letter variation that actually works. After an adversarial review I also built and proved
+  <strong>curve-smoothing</strong> and a <strong>spacing engine</strong> — the two things that
+  separate “a valid file” from “looks like handwriting”.</p>
+</div>
+
+<div class="callout warn">
+  <p><span class="lbl">What is NOT yet proven — the kill-gate:</span> that a <em>real person's real
+  handwriting</em> comes out the other side looking recognisably like <em>theirs</em>. Every proof so
+  far uses synthetic strokes. This is cheap to test with 5 real people and you should do it
+  <strong>before</strong> building any UI.</p>
+</div>
+
+<div class="callout fatal">
+  <p><span class="lbl">The uncomfortable business truth:</span> this is a <strong>crowded, AI-commoditizing
+  niche</strong>. Calligraphr already does photo-to-font for ~€6–10; <a href="https://www.lipi.ai/">Lipi.ai</a>
+  already does <em>template-free</em> AI photo-to-font with an API and marketplace. A solo “cheaper/more-private
+  Calligraphr” is a feature, not a company.</p>
+</div>
+
+<p><strong>My recommendation: <span class="pill accent">PIVOT</span></strong> — build the engine as a
+delightful <strong>on-device, open-source draw-it-yourself tool</strong> (and a great portfolio
+piece/talk), satisfy your personal itch, and <strong>only</strong> consider monetizing via the one
+durable buyer — the <strong>keepsake/gift</strong> market (“turn a loved one's letters into a font”) —
+if a quick demand test passes. Do <strong>not</strong> build the photographed-paper pipeline as
+originally imagined: it costs the most and lands two product-generations behind the competition.</p>
+
+<!-- ============================================================= -->
+<h2 id="vision">The vision (your brief, distilled)</h2>
+<div class="card">
+<ul class="tight">
+  <li><strong>Goal:</strong> your handwriting as a font, usable on the web, in editors, in messages.</li>
+  <li><strong>Ingest</strong> handwriting two ways — ideally a <em>photo of real paper</em> (calibrate by
+    writing a known phrase), with an <em>iPad / Apple Pencil</em> drawing mode as the easier fallback.</li>
+  <li><strong>Vectorize</strong> each letter into the curves fonts are made of, then <strong>produce a
+    font file</strong> that works in other programs.</li>
+  <li><strong>Nice-to-have:</strong> letters that vary naturally (not stamped identically).</li>
+  <li><strong>Order of operations:</strong> (1) prove it's possible → (2) web/mobile product → (3) monetize.</li>
+</ul>
+</div>
+
+<!-- ============================================================= -->
+<h2 id="proved">What we proved (with running code)</h2>
+
+<p>Rather than just assert feasibility, I built five small proofs and validated every generated font
+with an <em>independent</em> implementation (Python <code>fontTools</code>), so a different codebase
+agrees the files are real OpenType.</p>
+
+<div class="grid-proof">
+  <div class="proofcard"><div class="t">A · font in JS</div><div class="m">opentype.js → valid <code>.otf</code></div><span class="pill pass">PASS</span></div>
+  <div class="proofcard"><div class="t">C · stroke → glyph</div><div class="m">perfect-freehand → font</div><span class="pill pass">PASS</span></div>
+  <div class="proofcard"><div class="t">B · variation</div><div class="m">real <code>.ttf</code>/<code>.woff2</code> + <code>calt</code></div><span class="pill pass">PASS</span></div>
+  <div class="proofcard"><div class="t">D · template</div><div class="m">printable calibration sheet</div><span class="pill pass">PASS</span></div>
+  <div class="proofcard"><div class="t">E · quality</div><div class="m">curve-fit + spacing</div><span class="pill pass">PASS</span></div>
+</div>
+
+<h3>The letters are real</h3>
+<p>These glyph outlines are extracted straight from the fonts the proofs generated — lines, cubic
+curves, a hollow counter in the “O”, a pen stroke turned into a “C”, and the three “a” alternates the
+variation feature cycles through:</p>
+<figure>
+  <img src="specimen.svg" alt="Glyph specimen rendered from the generated proof fonts" />
+  <figcaption>Outlines pulled from <code>proof-a.otf</code>, <code>proof-c.otf</code> and <code>proof-b.ttf</code>. The “O” counter renders hollow → contour winding works.</figcaption>
+</figure>
+
+<h3>Variation actually shapes (not just stored)</h3>
+<p>Variation is the crux of “looks handwritten”. The right technique is <strong>not</strong> variable
+fonts (the glyphs can't be made interpolation-compatible) and <strong>not</strong> the <code>rand</code>
+feature (Safari ignores it and it reflows text). It's multiple alternates per letter cycled by a
+deterministic <code>calt</code> rule — the technique behind Google's <em>Caveat</em>. Proof B builds
+that and shapes it through HarfBuzz:</p>
+<div class="card mono" style="font-size:.92rem;background:#1d2347;color:#d7daf6;border:none">
+  shape <span style="color:#9fd0ff">"aaaaa"</span> →
+  [ <span style="color:#a6e3c4">a</span>, <span style="color:#a6e3c4">a.calt1</span>,
+    <span style="color:#a6e3c4">a.calt2</span>, <span style="color:#a6e3c4">a</span>,
+    <span style="color:#a6e3c4">a.calt1</span> ]
+  <div style="color:#8a90c4;font-size:.85em;margin-top:6px">— the alternates rotate deterministically; no reflow, works in Safari.</div>
+</div>
+
+<h3>Curve quality &amp; spacing — built <em>in response to</em> the review</h3>
+<p>The adversarial panel (below) correctly caught that my first pass emitted faceted 100+-point
+polylines and hardcoded every letter's width. I fixed both in code. A <em>noisy</em> (hand-tremor)
+stroke now fits to smooth cubics, and advance widths are derived from each glyph's ink:</p>
+<figure>
+  <img src="curvefit.svg" alt="Before/after: raw 127-command polyline vs 59-command smooth cubic fit" />
+  <figcaption>RDP + cubic-fit: 127 commands (straight lines) → 59 (smooth curves), tremor preserved. <code>capture/simplify.ts</code></figcaption>
+</figure>
+<figure>
+  <img src="spacing.svg" alt="Uniform vs ink-derived spacing of I and O" />
+  <figcaption>Metrics engine: uniform width (top) strands the “I” and crowds the “O”; ink-derived advances (bottom) give an even rhythm. <code>font/metrics.ts</code></figcaption>
+</figure>
+
+<!-- ============================================================= -->
+<h2 id="how">How it works</h2>
+<p>Both ingestion modes normalize to <strong>one shared glyph model</strong>, so the font-assembly
+backend never cares whether strokes came from a camera or a pencil.</p>
+
+<div class="card">
+  <div class="flow">
+    <span class="node in">✏️ iPad / Pencil draw</span>
+    <span class="arrow">→</span>
+    <span class="node">perfect-freehand outline → flatten → curve-fit</span>
+  </div>
+  <div class="flow">
+    <span class="node in">📷 photo of grid</span>
+    <span class="arrow">→</span>
+    <span class="node">ArUco homography → crop → threshold → trace</span>
+  </div>
+  <div class="flow" style="margin-top:4px">
+    <span class="arrow" style="margin-left:auto;margin-right:auto">↓ both produce ↓</span>
+  </div>
+  <div class="flow">
+    <span class="node out">GlyphOutline (shared model)</span>
+    <span class="arrow">→</span>
+    <span class="node">metrics + variation</span>
+    <span class="arrow">→</span>
+    <span class="node out">font · .otf / .ttf / .woff2</span>
+  </div>
+</div>
+
+<h3>The one real architectural fork: JS vs Python</h3>
+<p>opentype.js is great in the browser but has two hard limits (verified from its source): it only
+writes a CFF <code>.otf</code> (no true-TrueType writer), and it can't author the <code>calt</code>
+variation feature. Those need Python <code>fontTools</code>.</p>
+<table>
+  <thead><tr><th>Capability</th><th>opentype.js (browser)</th><th>fontTools (Python)</th></tr></thead>
+  <tbody>
+    <tr><td>Outlines → font</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Output format</td><td>CFF <code>.otf</code> only</td><td>real <code>.ttf</code>, <code>.woff2</code></td></tr>
+    <tr><td>Author <code>calt</code> variation</td><td>❌</td><td>✅</td></tr>
+  </tbody>
+</table>
+<p><strong>Decision (post-review):</strong> ship the opentype.js <code>.otf</code> as the headline
+output — it works everywhere modern, 100% on-device, instantly. True <code>.ttf</code>/<code>.woff2</code>
++ variation is an <em>optional</em> export, via a stateless no-retention worker if running fontTools
+in-browser (Pyodide) proves too heavy. The earlier “just run fontTools in Pyodide” was an unverified
+~6–10 MB bet — it is no longer load-bearing.</p>
+
+<!-- ============================================================= -->
+<h2 id="research">Research findings</h2>
+<p>Eight parallel research agents verified the current (2026) state of every library and claim. Verdicts:</p>
+<table>
+  <thead><tr><th>Dimension</th><th>Verdict</th><th>The one thing to know</th></tr></thead>
+  <tbody>
+    <tr><td>Font generation libs</td><td><span class="pill pass">FEASIBLE NOW</span></td><td>opentype.js writes CFF <code>.otf</code> in-browser; fontTools for real <code>.ttf</code>/<code>.woff2</code>/<code>calt</code>.</td></tr>
+    <tr><td>Raster → vector tracing</td><td><span class="pill warn">FEASIBLE · GPL</span></td><td>Potrace is the gold standard but it (and every port) is <strong>GPL-2.0</strong>.</td></tr>
+    <tr><td>Photo CV pipeline</td><td><span class="pill pass">FEASIBLE NOW</span></td><td>Only with a printed grid + ArUco markers; OpenCV.js stock build lacks aruco (~6 MB WASM).</td></tr>
+    <tr><td>Competitors</td><td><span class="pill fatal">RISKY · CROWDED</span></td><td>Calligraphr (leader) + Lipi.ai (live AI, template-free, API). Differentiation is thin.</td></tr>
+    <tr><td>Variation / variable fonts</td><td><span class="pill pass">FEASIBLE NOW</span></td><td>Multiple alternates + deterministic <code>calt</code>. Not variable fonts, not <code>rand</code>.</td></tr>
+    <tr><td>Cursive + ML synthesis</td><td><span class="pill warn">FEASIBLE HARD</span></td><td>Defer both. Cursive faked at font level later; ML is research-grade, CJK-focused.</td></tr>
+    <tr><td>Apple Pencil capture</td><td><span class="pill pass">FEASIBLE NOW</span></td><td>Pointer events + <code>getCoalescedEvents</code> (iOS 18.2) + perfect-freehand (MIT). Easiest path.</td></tr>
+    <tr><td>Legal / privacy / deploy</td><td><span class="pill pass">FEASIBLE NOW</span></td><td>Font file is yours; on-device = GDPR-light + ~$0 infra (Cloudflare Pages).</td></tr>
+  </tbody>
+</table>
+<p class="src">Key sources:
+  <a href="https://github.com/opentypejs/opentype.js">opentype.js</a> ·
+  <a href="https://pypi.org/project/fonttools/">fontTools</a> ·
+  <a href="https://potrace.sourceforge.net/">Potrace</a> ·
+  <a href="https://github.com/steveruizok/perfect-freehand">perfect-freehand</a> ·
+  <a href="https://github.com/googlefonts/caveat">Caveat (calt)</a> ·
+  <a href="https://www.calligraphr.com/en/pricing/">Calligraphr</a> ·
+  <a href="https://www.lipi.ai/">Lipi.ai</a> ·
+  <a href="https://developers.cloudflare.com/pages/platform/limits/">Cloudflare Pages</a> ·
+  <a href="https://learn.microsoft.com/en-us/typography/opentype/spec/otvaroverview">OpenType variations</a>.
+  Full lists in <code>docs/RESEARCH.md</code>.
+</p>
+
+<!-- ============================================================= -->
+<h2 id="adversary">The adversarial review</h2>
+<p>As you asked, I turned five pessimists loose on the plan — a fonts/CV engineer, a market analyst,
+a UX critic, a solo-dev execution skeptic, and a “kill it entirely” devil's advocate — then a
+synthesizer ranked the damage. They were brutal, and <strong>they read my actual code</strong>. The
+verdict was unanimous: <strong>pivot or kill</strong>. They were right about the central deception:</p>
+
+<div class="callout fatal">
+  <p><span class="lbl">The master objection:</span> “You de-risked the easy 20% (wrapping synthetic
+  shapes in a valid font container) and labelled the hard 80% (curve quality, spacing, and
+  <em>real</em> ink looking like the user's hand) as solved. Show a <em>real</em> captured stroke and a
+  <em>real</em> photographed glyph becoming a clean, well-spaced glyph a stranger calls <em>‘mine’</em> —
+  until then the thing the product is sold on is the one thing untested.”</p>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Threat (deduped across lenses)</th><th>Severity</th></tr></thead>
+  <tbody>
+    <tr><td>T1</td><td>No proof the output looks like the user's real handwriting — all inputs synthetic.</td><td><span class="resp open">FATAL</span></td></tr>
+    <tr><td>T2</td><td>The “curve-fit that fixes the 119-point bloat” didn't exist — code emitted only straight lines.</td><td><span class="resp open">FATAL</span></td></tr>
+    <tr><td>T3</td><td>Metrics/spacing (which “matter more than outlines”) were hardcoded — uniform = looks broken.</td><td><span class="resp open">FATAL</span></td></tr>
+    <tr><td>T4</td><td>The coding-font wedge is self-defeating: <code>calt</code> is OFF by default in VS Code &amp; dead in terminals.</td><td><span class="resp open">FATAL</span></td></tr>
+    <tr><td>T5</td><td>A feature, not a company: behind Calligraphr &amp; Lipi.ai; one-time €10 ⇒ ~zero LTV.</td><td><span class="resp conceded">SERIOUS</span></td></tr>
+    <tr><td>T6</td><td>Both moats die on contact: privacy breaks on any server fallback; dev wedge dies via T4.</td><td><span class="resp conceded">SERIOUS</span></td></tr>
+    <tr><td>T7</td><td>“fontTools in-browser via Pyodide” is an unvalidated ~6–10 MB / multi-second bet.</td><td><span class="resp conceded">SERIOUS</span></td></tr>
+    <tr><td>T8</td><td>Potrace (and every port) is GPL-2.0 — sitting on the monetized photo path.</td><td><span class="resp conceded">SERIOUS</span></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================= -->
+<h2 id="addressed">How I addressed it</h2>
+<p>Where it was code, I fixed it. Where it was a judgment, I conceded and reframed. I did not hand-wave
+anything back.</p>
+
+<table>
+  <thead><tr><th>Critique</th><th>Response</th><th>What I did</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>T2 · no curve-fit</strong></td>
+      <td><span class="resp fixed">FIXED IN CODE</span></td>
+      <td>Built <code>capture/simplify.ts</code> (RDP + closed Catmull-Rom cubic fit). Proof E: a noisy stroke goes <strong>127 → 59 commands</strong>, all smooth cubics, tremor preserved.</td>
+    </tr>
+    <tr>
+      <td><strong>T3 · uniform metrics</strong></td>
+      <td><span class="resp fixed">FIXED IN CODE</span></td>
+      <td>Built <code>font/metrics.ts</code> — advance width + side bearings derived from each glyph's ink box. Proof E: narrow/medium/wide → <strong>230 / 440 / 660</strong>, not 600. See spacing figure.</td>
+    </tr>
+    <tr>
+      <td><strong>T1 · no real ink</strong></td>
+      <td><span class="resp conceded">CONCEDED</span></td>
+      <td>Can't fake a real human here. Made the test stroke <em>noisy</em> (tremor/drift) instead of a perfect arc, and made the <strong>“is this me?” test with 5 real people the explicit kill-gate</strong> (Phase 0.5) before any UI.</td>
+    </tr>
+    <tr>
+      <td><strong>T4 · coding-font wedge</strong></td>
+      <td><span class="resp reframed">DROPPED</span></td>
+      <td>Conceded fully. Removed the monospaced-coding-font wedge; the product now states honestly that variation needs a shaping context and dies in many editors/terminals.</td>
+    </tr>
+    <tr>
+      <td><strong>T7 · Pyodide bet</strong></td>
+      <td><span class="resp reframed">REFRAMED</span></td>
+      <td>Made the <code>.otf</code> the headline output so Pyodide is no longer load-bearing; true-TTF/variation is optional via a stateless worker. Weight gets measured in Phase 0.5.</td>
+    </tr>
+    <tr>
+      <td><strong>T8 · Potrace GPL</strong></td>
+      <td><span class="resp reframed">DECIDED</span></td>
+      <td>A decision, not a menu: <strong>v1 ships draw-mode only</strong> (perfect-freehand + opentype.js are MIT — zero GPL exposure). The photo pipeline is deferred, maybe indefinitely.</td>
+    </tr>
+    <tr>
+      <td><strong>T5/T6 · market &amp; moats</strong></td>
+      <td><span class="resp conceded">CONCEDED</span></td>
+      <td>Accepted. Reframed as open-source tool + keepsake-gift monetization only, gated behind a real demand test. Dropped “privacy” and “more alternates” as purchase-drivers.</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-stroke winding</strong></td>
+      <td><span class="resp open">STILL OPEN</span></td>
+      <td>Honestly tracked: counters (o/e/B) and multi-stroke letters (t/i/=) need cross-stroke winding reconciliation. Moderate, solvable, not yet built.</td>
+    </tr>
+    <tr>
+      <td><strong>Name collision</strong></td>
+      <td><span class="resp conceded">NOTED</span></td>
+      <td><code>handwrite</code> collides with an existing MIT GitHub project — rename before any launch.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================================================= -->
+<h2 id="plan">The revised plan</h2>
+<p>The review reshaped this from “4 phases marching to a product” into “prove the scary thing first,
+cut ruthlessly, validate demand before building a business.”</p>
+
+<div class="card">
+<h3 style="margin-top:0">Phase 0 · feasibility — <span class="pill pass">done</span></h3>
+<p style="margin:0">5 proofs, all independently validated. Font container, variation, curve-fit, spacing: solved in code.</p>
+</div>
+<div class="card">
+<h3 style="margin-top:0">Phase 0.5 · the kill-gate — <span class="pill warn">do this next</span></h3>
+<ul class="tight" style="margin-bottom:0">
+  <li>5 real people draw their alphabet (iPad) <em>and</em> write it on paper. Render a paragraph through the real pipeline.</li>
+  <li>Measure “that looks like my handwriting” (unprompted). Measure Pyodide weight on a mid-range phone.</li>
+  <li><strong>KILL</strong> if no mode hits a clear majority “yes”. <strong>PROCEED</strong> only if one does + you can name one un-copyable differentiator.</li>
+</ul>
+</div>
+<div class="card">
+<h3 style="margin-top:0">Phase 1 · draw-mode MVP — one MIT runtime</h3>
+<p style="margin:0">SvelteKit + perfect-freehand + opentype.js. No CV, no Python, no Potrace, no backend. Anti-abandonment: a usable font at ~26 lowercase, instant live-preview, persisted progress. Download a <code>.otf</code>.</p>
+</div>
+<div class="card">
+<h3 style="margin-top:0">Phase 2 · real export + variation</h3>
+<p style="margin:0">Optional <code>.ttf</code>/<code>.woff2</code> + <code>calt</code> (more alternates than 3–4 to avoid periodicity). Be honest in-product about where variation renders. Offer a “baked single-variant” export for non-shaping targets.</p>
+</div>
+<div class="card" style="border-style:dashed;opacity:.85">
+<h3 style="margin-top:0">Phase 3 · photo pipeline — <span class="pill fatal">cut from v1</span></h3>
+<p style="margin:0">Reaches only 15-year-old Calligraphr parity, carries the GPL landmine, and is a worse onboarding than Lipi.ai's template-free flow. Build only if a specific reason emerges.</p>
+</div>
+<div class="card">
+<h3 style="margin-top:0">Phase 4 · product &amp; money — only if demand validates</h3>
+<p style="margin:0">Fake-door landing test first. The one durable buyer is the <strong>keepsake/gift</strong> segment (€40–150, human QA). A self-serve €10 unlock for a do-it-once novelty is a high-CAC, zero-LTV trap.</p>
+</div>
+
+<p>The calibration sheet from Proof D (the front-end of the photo path, were it ever built):</p>
+<figure style="max-width:420px;margin-left:auto;margin-right:auto">
+  <img src="template.svg" alt="Generated printable calibration template with corner registration markers" />
+  <figcaption>One glyph per box + corner registration markers (ArUco placeholders). <code>proofs/04-generate-template.ts</code></figcaption>
+</figure>
+
+<!-- ============================================================= -->
+<h2 id="recommend">Recommendation &amp; open questions</h2>
+
+<div class="callout">
+  <p><span class="lbl">Bottom line:</span> The technology works and the engineering is genuinely good —
+  good enough to be a standout <strong>open-source project + portfolio piece</strong>, and to make
+  <em>you</em> the handwriting font you wanted. As a <strong>business</strong>, the honest read is
+  caution: the market is crowded and being eaten by AI, so don't pour months into a “cheaper
+  Calligraphr.” Prove the emotional payoff with 5 real people first; if it lands and the
+  keepsake angle excites you, that's the one path with real willingness-to-pay.</p>
+</div>
+
+<h3>Two questions only you can answer</h3>
+<ul class="tight">
+  <li>Is this a <strong>product</strong>, or the best version of a <strong>personal tool + portfolio/talk</strong>? (The review argues hard for the latter — and that's a perfectly good outcome.)</li>
+  <li>Does the <strong>real-time iPad/Pencil draw</strong> interaction — watch your font appear as you write — excite you enough to build it as a delightful free toy, regardless of money?</li>
+</ul>
+
+<h3>If you build one thing next</h3>
+<p>The Phase-0.5 “is this me?” test. It's a weekend, it needs no new infrastructure (the pipeline
+exists), and it either unlocks the whole thing or saves you months. Everything else waits on its result.</p>
+
+<hr />
+<p class="src">Repo: portable core in <code>src/lib/handwrite/</code> · proofs in <code>proofs/</code>
+(<code>bun run proof:all</code> &amp; <code>bun run validate</code>) · docs in <code>docs/</code>
+(<a href="PLAN.md">PLAN</a>, <a href="ARCHITECTURE.md">ARCHITECTURE</a>, <a href="RESEARCH.md">RESEARCH</a>).
+Every font shown here was generated by the proofs and validated with fontTools. Generated 28 May 2026.</p>
+
+</div>
+</body>
+</html>
