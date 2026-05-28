@@ -24,3 +24,6 @@ __pycache__/
 venv/
 
 .DS_Store
+/MyHandwriting.woff2
+tools/_outlines.json
+handwriting-passes.json
