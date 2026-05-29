@@ -7,12 +7,14 @@
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D | null = null;
-  let local = $state<Stroke[]>([]);
-  let active: Stroke | null = null;
+  let active: Stroke | null = null; // in-progress stroke (imperative)
 
-  const OPTS = { size: 46, thinning: 0.55, smoothing: 0.5, streamline: 0.5, simulatePressure: false };
+  // Single source of truth: committed strokes come straight from the store, so
+  // the ✕ button and "done" styling react the instant a stroke is saved.
+  const committed = $derived(getStrokes(char));
   const onion = $derived(onionStrokes(char));
 
+  const OPTS = { size: 46, thinning: 0.55, smoothing: 0.5, streamline: 0.5, simulatePressure: false };
   function path(s: Stroke): Path2D | null {
     if (s.length === 0) return null;
     const o = getStroke(s.map((p) => [p.x, p.y, p.pressure ?? 0.5]), OPTS) as number[][];
@@ -40,18 +42,15 @@
     if (!ctx) return;
     ctx.clearRect(0, 0, VIRT, VIRT);
     const px = VIRT / Math.max(1, canvas.getBoundingClientRect().width);
-    // guides
     ctx.strokeStyle = "#d7def0";
     ctx.lineWidth = px;
     ctx.beginPath(); ctx.moveTo(0, BASELINE_FRAC * VIRT); ctx.lineTo(VIRT, BASELINE_FRAC * VIRT); ctx.stroke();
     ctx.setLineDash([4 * px, 4 * px]);
     for (const f of [XHEIGHT_FRAC, CAP_FRAC]) { ctx.beginPath(); ctx.moveTo(0, f * VIRT); ctx.lineTo(VIRT, f * VIRT); ctx.stroke(); }
     ctx.setLineDash([]);
-    // onion skin (previous pass, faint) — trace over it
     if (onion) { ctx.fillStyle = "#c9d2e6"; for (const s of onion) { const p = path(s); if (p) ctx.fill(p); } }
-    // current ink
     ctx.fillStyle = "#1d2347";
-    for (const s of local) { const p = path(s); if (p) ctx.fill(p); }
+    for (const s of committed) { const p = path(s); if (p) ctx.fill(p); }
     if (active) { const p = path(active); if (p) ctx.fill(p); }
   }
 
@@ -80,30 +79,22 @@
   function end(e: PointerEvent) {
     if (!active) return;
     e.preventDefault();
-    if (active.length > 1) local = [...local, active];
+    if (active.length > 1) setStrokes(char, [...committed, active]); // -> store -> `committed` derived updates
     active = null;
     if (ui.activeChar === char) ui.activeChar = null;
-    setStrokes(char, local);
     redraw();
   }
   function clear() {
-    local = [];
     active = null;
     setStrokes(char, []);
     redraw();
   }
 
-  // reload local strokes when the active pass changes or an import happens
-  $effect(() => {
-    cap.activePass;
-    ui.importTick;
-    local = getStrokes(char).map((s) => s.slice());
-    active = null;
-    redraw();
-  });
-
-  $effect(() => { onion; redraw(); });
-
+  // reset the in-progress stroke when the pass changes / data is imported
+  $effect(() => { cap.activePass; ui.importTick; active = null; });
+  // redraw whenever committed strokes or the onion-skin change
+  $effect(() => { committed; onion; redraw(); });
+  // size to the element
   $effect(() => {
     fit();
     const ro = new ResizeObserver(() => fit());
@@ -112,7 +103,7 @@
   });
 </script>
 
-<div class="cell" class:active={ui.activeChar === char} class:done={local.length > 0}>
+<div class="cell" class:active={ui.activeChar === char} class:done={committed.length > 0}>
   <span class="lbl">{char}</span>
   <canvas
     bind:this={canvas}
@@ -122,7 +113,7 @@
     onpointercancel={end}
     onpointerleave={end}
   ></canvas>
-  {#if local.length}<button class="clr" onclick={clear} aria-label="clear">✕</button>{/if}
+  {#if committed.length}<button class="clr" onclick={clear} aria-label="clear">✕</button>{/if}
 </div>
 
 <style>

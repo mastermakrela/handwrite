@@ -50,9 +50,12 @@ export function gotoPass(i: number) {
   save();
 }
 export function setStrokes(ch: string, strokes: Stroke[]) {
-  const p = cap.passes[cap.activePass];
+  // reassign the pass object (not mutate in place) so derived reads re-track
+  // new keys reliably — fixes the ✕ button not appearing until reload.
+  const p = { ...cap.passes[cap.activePass] };
   if (strokes.length) p[ch] = strokes;
   else delete p[ch];
+  cap.passes[cap.activePass] = p;
   save();
 }
 export function getStrokes(ch: string): Stroke[] {
