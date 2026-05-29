@@ -16,7 +16,8 @@
   let strokes = $state<Stroke[]>([]);
   let dividers = $state<number[]>([]); // x positions in virtual coords
   let active: Stroke | null = null; // in-progress stroke (imperative)
-  let drag: { idx: number; moved: boolean; created: boolean } | null = null;
+  let activeId: number | null = null; // pointer that owns the active stroke
+  let drag: { idx: number; moved: boolean; created: boolean; id: number } | null = null;
 
   const G = { baselineY: BASELINE_FRAC * VIRT, xHeightY: XHEIGHT_FRAC * VIRT };
   const segments = $derived(assignStrokesToSegments(strokes, dividers));
@@ -68,9 +69,9 @@
       const beyond = k >= target.length;
       ctx.fillStyle = beyond ? "rgba(220,80,80,0.10)" : k % 2 ? "rgba(59,63,158,0.05)" : "rgba(59,63,158,0.10)";
       ctx.fillRect(bounds[k], 0, bounds[k + 1] - bounds[k], VIRT);
-      // target-char label near the top of each band
+      // target-char label near the top of each band (space tokens stay blank)
       const ch = target[k];
-      if (ch) {
+      if (ch && ch !== " ") {
         ctx.fillStyle = "#aeb6c9";
         ctx.font = `${0.16 * VIRT}px sans-serif`;
         ctx.textAlign = "center";
@@ -118,16 +119,17 @@
   function down(e: PointerEvent) {
     if (e.pointerType === "pen") ui.penSeen = true;
     if (!allowed(e)) return;
+    if (tool === "divide") return divideDown(e);
+    if (active) return; // a stroke is already in progress — ignore a second (palm) pointer
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
-    if (tool === "divide") return divideDown(e);
+    activeId = e.pointerId;
     active = [pos(e)];
     redraw();
   }
   function move(e: PointerEvent) {
-    if (!allowed(e)) return;
     if (tool === "divide") return divideMove(e);
-    if (!active) return;
+    if (!active || e.pointerId !== activeId || !allowed(e)) return; // only the owning pointer extends it
     e.preventDefault();
     const evs = (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() : [e];
     for (const ev of evs) active.push(pos(ev));
@@ -135,10 +137,11 @@
   }
   function end(e: PointerEvent) {
     if (tool === "divide") return divideUp(e);
-    if (!active) return;
+    if (!active || e.pointerId !== activeId) return;
     e.preventDefault();
     if (active.length > 1) strokes = [...strokes, active];
     active = null;
+    activeId = null;
     redraw();
   }
 
@@ -150,15 +153,17 @@
     return best;
   }
   function divideDown(e: PointerEvent) {
+    if (drag) return; // already adjusting a divider — ignore a second (palm) pointer
     e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
     const vx = pos(e).x;
     const i = nearestDivider(vx);
-    if (i >= 0) drag = { idx: i, moved: false, created: false };
-    else { dividers = [...dividers, vx]; drag = { idx: dividers.length - 1, moved: false, created: true }; }
+    if (i >= 0) drag = { idx: i, moved: false, created: false, id: e.pointerId };
+    else { dividers = [...dividers, vx]; drag = { idx: dividers.length - 1, moved: false, created: true, id: e.pointerId }; }
     redraw();
   }
   function divideMove(e: PointerEvent) {
-    if (!drag) return;
+    if (!drag || e.pointerId !== drag.id) return;
     e.preventDefault();
     const vx = pos(e).x;
     const arr = [...dividers];
@@ -168,7 +173,7 @@
     redraw();
   }
   function divideUp(e: PointerEvent) {
-    if (!drag) return;
+    if (!drag || e.pointerId !== drag.id) return;
     e.preventDefault();
     if (!drag.moved && !drag.created) dividers = dividers.filter((_, k) => k !== drag!.idx); // tap = remove
     drag = null;
@@ -177,6 +182,7 @@
 
   function clearAll() {
     active = null;
+    activeId = null;
     strokes = [];
     dividers = [];
     redraw();
@@ -237,9 +243,9 @@
 ></canvas>
 
 <p class="hint">
-  Write the phrase in <b>print</b> (lift the pen between letters). Then switch to <b>divide</b>, tap each gap to
-  drop a boundary (drag to nudge, tap a line to remove) until the counter matches. <b>Apply</b> stores each
-  segment as that letter and moves to the next phrase.
+  Write the phrase in <b>print</b> (lift the pen between letters). Then switch to <b>divide</b> and tap each gap —
+  <b>including the space between words</b> — to drop a boundary (drag to nudge, tap a line to remove) until the
+  counter matches. <b>Apply</b> stores each segment as that letter and moves to the next phrase.
 </p>
 
 <style>

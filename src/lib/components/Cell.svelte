@@ -8,6 +8,7 @@
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D | null = null;
   let active: Stroke | null = null; // in-progress stroke (imperative)
+  let activeId: number | null = null; // pointer that owns the active stroke
 
   // Single source of truth: committed strokes come straight from the store, so
   // the ✕ button and "done" styling react the instant a stroke is saved.
@@ -63,24 +64,27 @@
   function down(e: PointerEvent) {
     if (e.pointerType === "pen") ui.penSeen = true;
     if (!allowed(e) || (ui.activeChar && ui.activeChar !== char)) return;
+    if (active) return; // a stroke is already in progress — ignore a second (palm) pointer
     e.preventDefault();
     ui.activeChar = char;
     canvas.setPointerCapture(e.pointerId);
+    activeId = e.pointerId;
     active = [pos(e)];
     redraw();
   }
   function move(e: PointerEvent) {
-    if (!active || ui.activeChar !== char || !allowed(e)) return;
+    if (!active || e.pointerId !== activeId || ui.activeChar !== char || !allowed(e)) return;
     e.preventDefault();
     const evs = (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() : [e];
     for (const ev of evs) active.push(pos(ev));
     redraw();
   }
   function end(e: PointerEvent) {
-    if (!active) return;
+    if (!active || e.pointerId !== activeId) return;
     e.preventDefault();
     if (active.length > 1) setStrokes(char, [...committed, active]); // -> store -> `committed` derived updates
     active = null;
+    activeId = null;
     if (ui.activeChar === char) ui.activeChar = null;
     redraw();
   }
@@ -91,7 +95,7 @@
   }
 
   // reset the in-progress stroke when the pass changes / data is imported
-  $effect(() => { cap.activePass; ui.importTick; active = null; });
+  $effect(() => { cap.activePass; ui.importTick; active = null; activeId = null; });
   // redraw whenever committed strokes or the onion-skin change
   $effect(() => { committed; onion; redraw(); });
   // size to the element

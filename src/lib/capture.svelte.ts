@@ -65,12 +65,14 @@ export function getStrokes(ch: string): Stroke[] {
 }
 /**
  * Sentence mode: write one normalized segment per target char into the active
- * pass (same per-char `Stroke[]` shape grid mode produces). Repeated chars in a
- * prompt resolve to last-occurrence-wins for v1. Segments without strokes are
- * skipped so a missed letter doesn't wipe an earlier capture.
+ * pass (same per-char `Stroke[]` shape grid mode produces). Space tokens are the
+ * empty word-gap bands — skipped. Repeated chars in a prompt resolve to
+ * last-occurrence-wins for v1. Segments without strokes are skipped so a missed
+ * letter doesn't wipe an earlier capture.
  */
 export function applySentence(targetChars: string[], segments: Stroke[][]) {
   for (let i = 0; i < targetChars.length; i++) {
+    if (targetChars[i] === " ") continue; // word gap, not a glyph
     const strokes = segments[i];
     if (strokes && strokes.length) setStrokes(targetChars[i], strokes);
   }
