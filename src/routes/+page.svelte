@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Cell from "$lib/components/Cell.svelte";
+  import SentenceCanvas from "$lib/components/SentenceCanvas.svelte";
   import { CHAR_GROUPS } from "$lib/handwrite/charsets";
   import {
     cap, load, save, newPass, gotoPass, toggleGroup, importPasses, doneInPass, chars,
@@ -50,6 +51,10 @@
 
 <header>
   <span class="logo">handwrite</span>
+  <div class="modes">
+    <button class:on={cap.mode === "grid"} onclick={() => (cap.mode = "grid", save())}>grid</button>
+    <button class:on={cap.mode === "sentence"} onclick={() => (cap.mode = "sentence", save())}>sentence</button>
+  </div>
   <div class="passes">
     <button onclick={() => gotoPass(cap.activePass - 1)} disabled={cap.activePass === 0} aria-label="previous pass">◂</button>
     <span class="passlabel">pass {cap.activePass + 1}/{cap.passes.length} · <b>{done}/{total}</b></span>
@@ -73,14 +78,18 @@
   </span>
 </div>
 
-<main>
-  {#each groups as g (g.id)}
-    <div class="group">{g.label}</div>
-    {#each g.chars as ch (ch.char)}
-      <Cell char={ch.char} />
+{#if cap.mode === "sentence"}
+  <SentenceCanvas />
+{:else}
+  <main>
+    {#each groups as g (g.id)}
+      <div class="group">{g.label}</div>
+      {#each g.chars as ch (ch.char)}
+        <Cell char={ch.char} />
+      {/each}
     {/each}
-  {/each}
-</main>
+  </main>
+{/if}
 
 <style>
   :global(:root) { --ink: #1d2347; --accent: #3b3f9e; --line: #e6e9f2; --muted: #7a8499; }
@@ -97,6 +106,9 @@
     backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
   }
   .logo { font-family: "Snell Roundhand", "Segoe Script", cursive; font-size: 1.5rem; color: var(--accent); }
+  .modes { display: flex; gap: 4px; }
+  .modes button { font-size: 0.82rem; padding: 6px 12px; }
+  .modes button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
   .passes { display: flex; align-items: center; gap: 6px; }
   .passlabel { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
   .spacer { flex: 1; }

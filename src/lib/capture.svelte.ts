@@ -16,6 +16,7 @@ export const cap = $state({
   activePass: 0,
   enabled: ["lower", "upper", "digits", "punct"] as string[],
   target: 5,
+  mode: "grid" as "grid" | "sentence",
 });
 
 /** transient UI state (not persisted) */
@@ -33,11 +34,12 @@ export function load() {
       cap.activePass = Math.min(s.activePass ?? 0, cap.passes.length - 1);
       cap.enabled = s.enabled ?? cap.enabled;
       cap.target = s.target ?? 5;
+      cap.mode = s.mode === "sentence" ? "sentence" : "grid";
     }
   } catch {}
 }
 export function save() {
-  localStorage.setItem(KEY, JSON.stringify({ passes: cap.passes, activePass: cap.activePass, enabled: cap.enabled, target: cap.target }));
+  localStorage.setItem(KEY, JSON.stringify({ passes: cap.passes, activePass: cap.activePass, enabled: cap.enabled, target: cap.target, mode: cap.mode }));
 }
 
 export function newPass() {
@@ -60,6 +62,18 @@ export function setStrokes(ch: string, strokes: Stroke[]) {
 }
 export function getStrokes(ch: string): Stroke[] {
   return cap.passes[cap.activePass]?.[ch] ?? [];
+}
+/**
+ * Sentence mode: write one normalized segment per target char into the active
+ * pass (same per-char `Stroke[]` shape grid mode produces). Repeated chars in a
+ * prompt resolve to last-occurrence-wins for v1. Segments without strokes are
+ * skipped so a missed letter doesn't wipe an earlier capture.
+ */
+export function applySentence(targetChars: string[], segments: Stroke[][]) {
+  for (let i = 0; i < targetChars.length; i++) {
+    const strokes = segments[i];
+    if (strokes && strokes.length) setStrokes(targetChars[i], strokes);
+  }
 }
 /** Onion-skin source: strokes for this char from the most recent earlier pass. */
 export function onionStrokes(ch: string): Stroke[] | null {
