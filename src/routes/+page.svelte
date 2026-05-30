@@ -1,169 +1,130 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import Cell from "$lib/components/Cell.svelte";
-  import SentenceCanvas from "$lib/components/SentenceCanvas.svelte";
-  import { CHAR_GROUPS } from "$lib/handwrite/charsets";
-  import {
-    cap, load, save, newPass, gotoPass, toggleGroup, importPasses, doneInPass, chars,
-    profiles, createProfile, switchProfile, renameProfile, deleteProfile,
-  } from "$lib/capture.svelte";
-  import { glyphsFromPasses } from "$lib/handwrite/font/glyph-from-passes";
-  import { buildFont, fontToUint8Array } from "$lib/handwrite/font/opentype-builder";
-  import { DEFAULT_METRICS } from "$lib/handwrite/types";
-
-  const groups = $derived(CHAR_GROUPS.filter((g) => cap.enabled.includes(g.id)));
-  const total = $derived(chars().length);
-  const done = $derived(doneInPass(cap.activePass));
-
-  function download(name: string, blob: Blob) {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-  function exportOtf() {
-    const glyphs = glyphsFromPasses(cap.passes, chars());
-    if (!glyphs.length) return alert("Draw at least one character first.");
-    const font = buildFont({ familyName: "My Handwriting", styleName: "Regular", ...DEFAULT_METRICS, glyphs });
-    download("MyHandwriting.otf", new Blob([fontToUint8Array(font) as unknown as BlobPart], { type: "font/otf" }));
-  }
-  function exportPasses() {
-    download("handwriting-passes.json", new Blob([JSON.stringify(cap.passes)], { type: "application/json" }));
-  }
-  function onImport(e: Event) {
-    const f = (e.target as HTMLInputElement).files?.[0];
-    if (!f) return;
-    f.text().then((t) => {
-      try {
-        const parsed = JSON.parse(t);
-        importPasses(Array.isArray(parsed) ? parsed : [parsed]);
-      } catch { alert("Could not read that file."); }
-    });
-  }
-
-  function addProfile() {
-    const name = prompt("New profile name?", "");
-    if (name === null) return; // cancelled
-    createProfile(name);
-  }
-  function renameActive() {
-    const cur = profiles.list.find((p) => p.id === profiles.activeId);
-    const name = prompt("Rename profile", cur?.name ?? "");
-    if (name === null) return;
-    renameProfile(profiles.activeId, name);
-  }
-  function deleteActive() {
-    const cur = profiles.list.find((p) => p.id === profiles.activeId);
-    if (confirm(`Delete profile “${cur?.name}” and all its strokes? This can't be undone.`)) deleteProfile(profiles.activeId);
-  }
-
-  onMount(() => {
-    load();
-    // Ask the browser to keep our local strokes from being evicted under storage
-    // pressure / privacy timers (best-effort; not all browsers honour it).
-    navigator.storage?.persist?.();
-    const block = (e: Event) => e.preventDefault();
-    const flush = () => save(); // belt-and-braces save when the page is hidden/closed
-    for (const t of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(t, block);
-    for (const t of ["visibilitychange", "pagehide"]) window.addEventListener(t, flush);
-    return () => {
-      for (const t of ["gesturestart", "gesturechange", "gestureend"]) document.removeEventListener(t, block);
-      for (const t of ["visibilitychange", "pagehide"]) window.removeEventListener(t, flush);
-    };
-  });
+  // Landing / explainer page. Styling here is intentionally minimal — a proper
+  // visual pass comes later; this round is about getting the content right.
 </script>
 
-<header>
+<svelte:head>
+  <title>handwrite — turn your handwriting into a font</title>
+  <meta
+    name="description"
+    content="handwrite turns your real handwriting into a usable font (.otf), entirely on your device. Write the letters on an iPad with an Apple Pencil, export a font you can install anywhere."
+  />
+</svelte:head>
+
+<header class="top">
   <span class="logo">handwrite</span>
-  <div class="profile">
-    <select aria-label="profile" value={profiles.activeId} onchange={(e) => switchProfile(e.currentTarget.value)}>
-      {#each profiles.list as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-    </select>
-    <button onclick={addProfile} aria-label="new profile" title="New profile">+</button>
-    <button onclick={renameActive} aria-label="rename profile" title="Rename profile">✎</button>
-    <button onclick={deleteActive} disabled={profiles.list.length <= 1} aria-label="delete profile" title="Delete profile">🗑</button>
-  </div>
-  <div class="modes">
-    <button class:on={cap.mode === "grid"} onclick={() => (cap.mode = "grid", save())}>grid</button>
-    <button class:on={cap.mode === "sentence"} onclick={() => (cap.mode = "sentence", save())}>sentence</button>
-  </div>
-  <div class="passes">
-    <button onclick={() => gotoPass(cap.activePass - 1)} disabled={cap.activePass === 0} aria-label="previous pass">◂</button>
-    <span class="passlabel">pass {cap.activePass + 1}/{cap.passes.length} · <b>{done}/{total}</b></span>
-    <button onclick={() => gotoPass(cap.activePass + 1)} disabled={cap.activePass >= cap.passes.length - 1} aria-label="next pass">▸</button>
-    <button class="primary" onclick={newPass}>+ pass</button>
-  </div>
-  <span class="spacer"></span>
-  <button onclick={exportOtf}>⬇︎ .otf</button>
-  <button onclick={exportPasses}>⬇︎ passes</button>
-  <label class="btn">Import<input type="file" accept="application/json" onchange={onImport} /></label>
+  <a class="cta" href="/app">Open the studio →</a>
 </header>
 
-<div class="sub">
-  <span class="hint">
-    Write each character on the solid baseline. Aim for <b>{cap.target} passes</b> — the previous pass shows faint underneath so you can trace it, and the passes become alternates so your font varies naturally. Pencil only (palm-safe); everything stays on your device.
-  </span>
-  <span class="chips">
-    {#each CHAR_GROUPS as g}
-      <button class="chip" class:on={cap.enabled.includes(g.id)} onclick={() => toggleGroup(g.id)}>{g.label}</button>
-    {/each}
-  </span>
-</div>
+<main>
+  <section class="hero">
+    <h1>Your handwriting, as a real font.</h1>
+    <p class="lede">
+      <strong>handwrite</strong> turns the letters you draw into an installable font file — the same
+      <code>.otf</code> you'd buy from a type foundry, except it's yours and it looks like
+      <em>you</em>. You write each letter once (or a few times); it stitches them into a font you can
+      use in any app on any device.
+    </p>
+    <p class="lede">
+      Everything happens <strong>on your device</strong>. Your handwriting never leaves the browser —
+      there's no account, no upload, no server. It's a small, personal tool, built for fun.
+    </p>
+    <a class="cta big" href="/app">Start writing →</a>
+  </section>
 
-{#if cap.mode === "sentence"}
-  <SentenceCanvas />
-{:else}
-  <main>
-    {#each groups as g (g.id)}
-      <div class="group">{g.label}</div>
-      {#each g.chars as ch (ch.char)}
-        <Cell char={ch.char} />
-      {/each}
-    {/each}
-  </main>
-{/if}
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li>
+        <h3>1 · Write the letters</h3>
+        <p>
+          On an iPad with an Apple Pencil (palm rejection keeps your hand from drawing), fill in each
+          character. Two ways to do it: a <strong>grid</strong> of one-letter cells, or
+          <strong>sentence mode</strong> — write a short phrase naturally, then mark the gaps between
+          letters so each one feels the way it does inside a real word.
+        </p>
+      </li>
+      <li>
+        <h3>2 · Do a few passes</h3>
+        <p>
+          Write the alphabet more than once. Each pass becomes an <strong>alternate</strong> of every
+          letter, and the font quietly rotates between them as you type — so your double-l's and
+          repeated e's don't come out looking stamped from a mould. The previous pass shows faintly
+          underneath so you can trace your own rhythm.
+        </p>
+      </li>
+      <li>
+        <h3>3 · Export your font</h3>
+        <p>
+          Download a finished <code>.otf</code> and install it like any other font. You can also
+          export your raw strokes as a JSON file to back up or move between devices, and re-import
+          them later.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>What it can capture</h2>
+    <ul class="features">
+      <li><strong>The full Latin set</strong> — a–z, A–Z, digits, and common punctuation.</li>
+      <li><strong>German and Polish accents</strong> — ä ö ü ß, and the complete Polish set (ą ć ę ł ń ó ś ź ż).</li>
+      <li><strong>Natural variation</strong> — multiple alternates per letter, cycled automatically.</li>
+      <li><strong>Profiles</strong> — sharing one tablet? Each person keeps their own letters, stored separately.</li>
+      <li><strong>Baselines and guides</strong> — x-height, cap-height, and descenders are handled, so g, j, p, y (and ł) sit correctly.</li>
+    </ul>
+  </section>
+
+  <section class="privacy">
+    <h2>Private by default</h2>
+    <p>
+      There is no backend. Your strokes are saved locally in your browser and the font is built right
+      on your device. Nothing is uploaded anywhere — if you clear your browser data, it's gone, which
+      is exactly why the <strong>export</strong> buttons exist. Keep a JSON backup of anything you care
+      about.
+    </p>
+  </section>
+
+  <section class="install">
+    <h2>Install it on your iPad</h2>
+    <p>
+      handwrite works in the browser, but it's nicer as an app. In Safari, open it, tap
+      <strong>Share → Add to Home Screen</strong>. It launches full-screen and keeps working offline.
+    </p>
+    <a class="cta" href="/app">Open the studio →</a>
+  </section>
+</main>
+
+<footer>
+  <span>handwrite · a personal project · everything stays on your device</span>
+</footer>
 
 <style>
   :global(:root) { --ink: #1d2347; --accent: #3b3f9e; --line: #e6e9f2; --muted: #7a8499; }
   :global(html, body) {
     margin: 0; background: #f6f7fb; color: var(--ink);
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    touch-action: pan-y; -webkit-text-size-adjust: 100%;
-    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-    overscroll-behavior-y: contain;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
   }
-  header {
-    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: calc(8px + env(safe-area-inset-top)) 14px 8px; background: rgba(246, 247, 251, 0.92);
-    backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+  .top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(12px + env(safe-area-inset-top)) 20px 12px; border-bottom: 1px solid var(--line);
   }
-  .logo { font-family: "Snell Roundhand", "Segoe Script", cursive; font-size: 1.5rem; color: var(--accent); }
-  .profile { display: flex; align-items: center; gap: 4px; }
-  .profile select {
-    font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--ink); background: #fff;
-    border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; max-width: 11rem;
+  .logo { font-family: "Snell Roundhand", "Segoe Script", cursive; font-size: 1.6rem; color: var(--accent); }
+  main { max-width: 64ch; margin: 0 auto; padding: 8px 20px 40px; }
+  .cta {
+    display: inline-block; font-weight: 600; text-decoration: none; color: #fff; background: var(--accent);
+    padding: 9px 16px; border-radius: 10px;
   }
-  .profile button { padding: 7px 10px; font-size: 0.85rem; }
-  .modes { display: flex; gap: 4px; }
-  .modes button { font-size: 0.82rem; padding: 6px 12px; }
-  .modes button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .passes { display: flex; align-items: center; gap: 6px; }
-  .passlabel { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
-  .spacer { flex: 1; }
-  button, label.btn {
-    font: inherit; font-weight: 600; font-size: 0.88rem; border: 1px solid var(--line); background: #fff;
-    color: var(--ink); padding: 8px 12px; border-radius: 10px; cursor: pointer;
-  }
-  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  button:disabled { opacity: 0.4; }
-  label.btn input { display: none; }
-  .sub { padding: 8px 16px 0; display: flex; flex-direction: column; gap: 8px; }
-  .hint { color: var(--muted); font-size: 0.78rem; max-width: 70ch; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip { font-size: 0.78rem; padding: 5px 11px; border-radius: 999px; color: var(--muted); }
-  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; padding: 12px 14px 56px; align-items: start; }
-  .group { grid-column: 1 / -1; color: var(--muted); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; }
-  .group:first-child { margin-top: 0; }
+  .cta.big { margin-top: 8px; padding: 12px 20px; font-size: 1.05rem; }
+  .hero { padding: 32px 0 8px; }
+  h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 16px; }
+  .lede { font-size: 1.08rem; color: #2b3252; }
+  h2 { font-size: 1.3rem; margin: 40px 0 12px; }
+  h3 { font-size: 1rem; margin: 0 0 4px; color: var(--accent); }
+  code { background: #eef0f8; padding: 1px 6px; border-radius: 6px; font-size: 0.92em; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 20px; }
+  .features { padding-left: 1.1em; display: grid; gap: 8px; }
+  .privacy, .install { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px 20px; }
+  footer { border-top: 1px solid var(--line); padding: 18px 20px calc(18px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 0.85rem; text-align: center; }
 </style>
