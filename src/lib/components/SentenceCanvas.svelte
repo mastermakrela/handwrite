@@ -12,12 +12,13 @@
   const target = $derived(useCustom ? promptChars(custom) : PROMPTS[promptIdx].chars);
 
   // ---- capture state ----
-  let tool = $state<"write" | "divide">("write");
+  let tool = $state<"write" | "divide" | "erase">("write");
   let strokes = $state<Stroke[]>([]);
   let dividers = $state<number[]>([]); // x positions in virtual coords
   let active: Stroke | null = null; // in-progress stroke (imperative)
   let activeId: number | null = null; // pointer that owns the active stroke
   let drag: { idx: number; moved: boolean; created: boolean; id: number } | null = null;
+  let erasing = false; // erase tool pointer is down (scrub-to-erase)
 
   const G = { baselineY: BASELINE_FRAC * VIRT, xHeightY: XHEIGHT_FRAC * VIRT };
   const segments = $derived(assignStrokesToSegments(strokes, dividers));
@@ -120,6 +121,13 @@
     if (e.pointerType === "pen") ui.penSeen = true;
     if (!allowed(e)) return;
     if (tool === "divide") return divideDown(e);
+    if (tool === "erase") {
+      e.preventDefault();
+      canvas.setPointerCapture(e.pointerId);
+      erasing = true;
+      eraseAt(pos(e));
+      return;
+    }
     if (active) return; // a stroke is already in progress — ignore a second (palm) pointer
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
@@ -129,6 +137,10 @@
   }
   function move(e: PointerEvent) {
     if (tool === "divide") return divideMove(e);
+    if (tool === "erase") {
+      if (erasing && allowed(e)) { e.preventDefault(); eraseAt(pos(e)); } // scrub to keep erasing
+      return;
+    }
     if (!active || e.pointerId !== activeId || !allowed(e)) return; // only the owning pointer extends it
     e.preventDefault();
     const evs = (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() : [e];
@@ -137,6 +149,7 @@
   }
   function end(e: PointerEvent) {
     if (tool === "divide") return divideUp(e);
+    if (tool === "erase") { erasing = false; return; }
     if (!active || e.pointerId !== activeId) return;
     e.preventDefault();
     if (active.length > 1) strokes = [...strokes, active];
@@ -180,9 +193,22 @@
     redraw();
   }
 
+  // ---- erase tool: tap/scrub removes the nearest divider or stroke ----
+  const ERASE_R = 60; // virtual-unit hit radius for grabbing a stroke
+  function eraseAt(p: Pt) {
+    const di = nearestDivider(p.x); // dividers win when tapped right on the line
+    if (di >= 0) { dividers = dividers.filter((_, k) => k !== di); return; }
+    let best = -1, bestD = ERASE_R;
+    strokes.forEach((s, i) => {
+      for (const q of s) { const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bestD) { bestD = d; best = i; } }
+    });
+    if (best >= 0) strokes = strokes.filter((_, k) => k !== best);
+  }
+
   function clearAll() {
     active = null;
     activeId = null;
+    erasing = false;
     strokes = [];
     dividers = [];
     redraw();
@@ -225,6 +251,7 @@
   <div class="tools">
     <button class:on={tool === "write"} onclick={() => (tool = "write")}>✎ write</button>
     <button class:on={tool === "divide"} onclick={() => (tool = "divide")}>| divide</button>
+    <button class:on={tool === "erase"} onclick={() => (tool = "erase")}>⌫ erase</button>
   </div>
   <span class="ref">{target.join(" ")}</span>
   <span class="spacer"></span>
@@ -244,8 +271,9 @@
 
 <p class="hint">
   Write the phrase in <b>print</b> (lift the pen between letters). Then switch to <b>divide</b> and tap each gap —
-  <b>including the space between words</b> — to drop a boundary (drag to nudge, tap a line to remove) until the
-  counter matches. <b>Apply</b> stores each segment as that letter and moves to the next phrase.
+  <b>including the space between words</b> — to drop a boundary (drag to nudge) until the counter matches. Use
+  <b>erase</b> to scrub away a wrong stroke or a divider. <b>Apply</b> stores each segment as that letter and
+  moves to the next phrase.
 </p>
 
 <style>
