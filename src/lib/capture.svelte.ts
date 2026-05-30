@@ -9,7 +9,17 @@ export type Pt = { x: number; y: number; pressure: number };
 export type Stroke = Pt[];
 export type Pass = Record<string, Stroke[]>; // char -> strokes
 
-const KEY = "handwrite.capture.v2";
+export type Profile = { id: string; name: string };
+
+// Per-profile data lives under `handwrite.capture.v2.<id>`; the registry of
+// profiles (and which one is active) under REG_KEY. LEGACY_KEY is the old
+// single-bucket key — migrated into the first profile on upgrade and then left
+// in place as an extra backup.
+const REG_KEY = "handwrite.profiles.v1";
+const LEGACY_KEY = "handwrite.capture.v2";
+const dataKey = (id: string) => `handwrite.capture.v2.${id}`;
+const newId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 export const cap = $state({
   passes: [{}] as Pass[],
@@ -22,24 +32,89 @@ export const cap = $state({
 /** transient UI state (not persisted) */
 export const ui = $state({ penSeen: false, activeChar: null as string | null, importTick: 0 });
 
+/** Local profiles so people sharing one tablet keep separate strokes. */
+export const profiles = $state({ activeId: "", list: [] as Profile[] });
+
 export function chars(): CharDef[] {
   return activeChars(new Set(cap.enabled));
 }
 
+type Snapshot = { passes: Pass[]; activePass: number; enabled: string[]; target: number; mode: "grid" | "sentence" };
+
+/** Load a stored snapshot (or sensible defaults) into the active `cap` state. */
+function applyToCap(s: Partial<Snapshot> | null) {
+  cap.passes = s?.passes?.length ? s.passes : [{}];
+  cap.activePass = Math.min(s?.activePass ?? 0, cap.passes.length - 1);
+  cap.enabled = s?.enabled ?? ["lower", "upper", "digits", "punct"];
+  cap.target = s?.target ?? 5;
+  cap.mode = s?.mode === "sentence" ? "sentence" : "grid";
+  ui.importTick++; // force any in-progress stroke on every canvas to reset
+}
+function loadActiveData() {
+  try { applyToCap(JSON.parse(localStorage.getItem(dataKey(profiles.activeId)) || "null")); }
+  catch { applyToCap(null); }
+}
+function saveRegistry() {
+  localStorage.setItem(REG_KEY, JSON.stringify({ activeId: profiles.activeId, list: profiles.list }));
+}
+
 export function load() {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (s) {
-      cap.passes = s.passes?.length ? s.passes : [{}];
-      cap.activePass = Math.min(s.activePass ?? 0, cap.passes.length - 1);
-      cap.enabled = s.enabled ?? cap.enabled;
-      cap.target = s.target ?? 5;
-      cap.mode = s.mode === "sentence" ? "sentence" : "grid";
+    const reg = JSON.parse(localStorage.getItem(REG_KEY) || "null");
+    if (reg?.list?.length) {
+      profiles.list = reg.list;
+      profiles.activeId = reg.list.some((p: Profile) => p.id === reg.activeId) ? reg.activeId : reg.list[0].id;
+    } else {
+      // first run — seed a Default profile, migrating any pre-profile data into it
+      const id = newId();
+      profiles.list = [{ id, name: "Default" }];
+      profiles.activeId = id;
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy) localStorage.setItem(dataKey(id), legacy); // (LEGACY_KEY stays as an extra backup)
+      saveRegistry();
     }
+    loadActiveData();
   } catch {}
 }
 export function save() {
-  localStorage.setItem(KEY, JSON.stringify({ passes: cap.passes, activePass: cap.activePass, enabled: cap.enabled, target: cap.target, mode: cap.mode }));
+  if (!profiles.activeId) return;
+  localStorage.setItem(
+    dataKey(profiles.activeId),
+    JSON.stringify({ passes: cap.passes, activePass: cap.activePass, enabled: cap.enabled, target: cap.target, mode: cap.mode }),
+  );
+  saveRegistry();
+}
+
+export function createProfile(name: string) {
+  save(); // persist the current profile first
+  const id = newId();
+  profiles.list = [...profiles.list, { id, name: name.trim() || "Untitled" }];
+  profiles.activeId = id;
+  applyToCap(null); // start blank
+  save();
+}
+export function switchProfile(id: string) {
+  if (id === profiles.activeId) return;
+  save(); // persist the current profile before leaving it
+  profiles.activeId = id;
+  loadActiveData();
+  saveRegistry();
+}
+export function renameProfile(id: string, name: string) {
+  const n = name.trim();
+  if (!n) return;
+  profiles.list = profiles.list.map((p) => (p.id === id ? { ...p, name: n } : p));
+  saveRegistry();
+}
+export function deleteProfile(id: string) {
+  if (profiles.list.length <= 1) return; // always keep at least one
+  localStorage.removeItem(dataKey(id));
+  profiles.list = profiles.list.filter((p) => p.id !== id);
+  if (profiles.activeId === id) {
+    profiles.activeId = profiles.list[0].id;
+    loadActiveData();
+  }
+  saveRegistry();
 }
 
 export function newPass() {

@@ -5,6 +5,7 @@
   import { CHAR_GROUPS } from "$lib/handwrite/charsets";
   import {
     cap, load, save, newPass, gotoPass, toggleGroup, importPasses, doneInPass, chars,
+    profiles, createProfile, switchProfile, renameProfile, deleteProfile,
   } from "$lib/capture.svelte";
   import { glyphsFromPasses } from "$lib/handwrite/font/glyph-from-passes";
   import { buildFont, fontToUint8Array } from "$lib/handwrite/font/opentype-builder";
@@ -41,16 +42,48 @@
     });
   }
 
+  function addProfile() {
+    const name = prompt("New profile name?", "");
+    if (name === null) return; // cancelled
+    createProfile(name);
+  }
+  function renameActive() {
+    const cur = profiles.list.find((p) => p.id === profiles.activeId);
+    const name = prompt("Rename profile", cur?.name ?? "");
+    if (name === null) return;
+    renameProfile(profiles.activeId, name);
+  }
+  function deleteActive() {
+    const cur = profiles.list.find((p) => p.id === profiles.activeId);
+    if (confirm(`Delete profile “${cur?.name}” and all its strokes? This can't be undone.`)) deleteProfile(profiles.activeId);
+  }
+
   onMount(() => {
     load();
+    // Ask the browser to keep our local strokes from being evicted under storage
+    // pressure / privacy timers (best-effort; not all browsers honour it).
+    navigator.storage?.persist?.();
     const block = (e: Event) => e.preventDefault();
+    const flush = () => save(); // belt-and-braces save when the page is hidden/closed
     for (const t of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(t, block);
-    return () => { for (const t of ["gesturestart", "gesturechange", "gestureend"]) document.removeEventListener(t, block); };
+    for (const t of ["visibilitychange", "pagehide"]) window.addEventListener(t, flush);
+    return () => {
+      for (const t of ["gesturestart", "gesturechange", "gestureend"]) document.removeEventListener(t, block);
+      for (const t of ["visibilitychange", "pagehide"]) window.removeEventListener(t, flush);
+    };
   });
 </script>
 
 <header>
   <span class="logo">handwrite</span>
+  <div class="profile">
+    <select aria-label="profile" value={profiles.activeId} onchange={(e) => switchProfile(e.currentTarget.value)}>
+      {#each profiles.list as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+    </select>
+    <button onclick={addProfile} aria-label="new profile" title="New profile">+</button>
+    <button onclick={renameActive} aria-label="rename profile" title="Rename profile">✎</button>
+    <button onclick={deleteActive} disabled={profiles.list.length <= 1} aria-label="delete profile" title="Delete profile">🗑</button>
+  </div>
   <div class="modes">
     <button class:on={cap.mode === "grid"} onclick={() => (cap.mode = "grid", save())}>grid</button>
     <button class:on={cap.mode === "sentence"} onclick={() => (cap.mode = "sentence", save())}>sentence</button>
@@ -106,6 +139,12 @@
     backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
   }
   .logo { font-family: "Snell Roundhand", "Segoe Script", cursive; font-size: 1.5rem; color: var(--accent); }
+  .profile { display: flex; align-items: center; gap: 4px; }
+  .profile select {
+    font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--ink); background: #fff;
+    border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; max-width: 11rem;
+  }
+  .profile button { padding: 7px 10px; font-size: 0.85rem; }
   .modes { display: flex; gap: 4px; }
   .modes button { font-size: 0.82rem; padding: 6px 12px; }
   .modes button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
