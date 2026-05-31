@@ -14,18 +14,23 @@ const line = (x0: number, x1: number): Stroke =>
     { x: x1, y: 600, pressure: 0.5 },
   ];
 
-// "t h i": t = stem(100–112) + crossbar(86–128, overlaps); h = 220–260; i = stem(360–368) + dot(361–367, overlaps)
+// "thi" (no spaces): t = stem(100–112) + crossbar(86–128, overlaps); h = 220–260; i = stem(360–368) + dot(361–367, overlaps)
 const strokes: Stroke[] = [line(100, 112), line(86, 128), line(220, 260), line(360, 368), line(361, 367)];
-const d = proposeDividers(strokes, 3);
-
+const d = proposeDividers(strokes, ["t", "h", "i"]);
 const insideT = d.some((x) => x > 86 && x < 128);
 const insideI = d.some((x) => x > 360 && x < 368);
-const between = d.length === 2;
-const ok = between && !insideT && !insideI;
+const clusterOk = d.length === 2 && !insideT && !insideI;
 
-console.log("SMOKE — auto-divide clustering");
-console.log("  divider count: ", between ? "OK ✅ (2)" : `FAIL ❌ (${d.length}) [${d.map(Math.round)}]`);
-console.log("  not inside t:  ", insideT ? "FAIL ❌" : "OK ✅");
-console.log("  not inside i:  ", insideI ? "FAIL ❌" : "OK ✅");
+// "a b" (a space between two words): wide gap 130→300 should get TWO dividers
+// bounding an empty middle band for the space token.
+const spaced: Stroke[] = [line(60, 130), line(300, 370)];
+const ds = proposeDividers(spaced, ["a", " ", "b"]);
+const inGap = ds.filter((x) => x > 130 && x < 300);
+const spaceOk = ds.length === 2 && inGap.length === 2; // both dividers sit in the word gap → empty space band between them
+
+console.log("SMOKE — auto-divide clustering + spaces");
+console.log("  t/i not split:  ", clusterOk ? "OK ✅ (2 dividers)" : `FAIL ❌ [${d.map(Math.round)}]`);
+console.log("  space bounded:  ", spaceOk ? "OK ✅ (2 dividers in gap)" : `FAIL ❌ [${ds.map(Math.round)}]`);
+const ok = clusterOk && spaceOk;
 console.log(ok ? "  RESULT: PASS ✅" : "  RESULT: FAIL ❌");
 process.exit(ok ? 0 : 1);

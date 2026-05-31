@@ -60,9 +60,13 @@
 
 <TopBar onOpenProfiles={() => (showProfiles = true)} onOpenPen={() => (showPen = true)} />
 
-{#if cap.mode === "sentence"}
+<!-- Both views stay mounted; we just hide the inactive one. That preserves the
+     sentence canvas's in-progress drawing when you pop over to Grid and back. -->
+<div hidden={cap.mode !== "sentence"}>
   <SentenceCanvas />
-{:else}
+</div>
+
+<div hidden={cap.mode !== "grid"}>
   <main>
     {#if lowerGroup}
       <div class="group">{lowerGroup.label}</div>
@@ -102,7 +106,7 @@
       <button class="primary" onclick={newPass}>Add another round</button>
     </div>
   {/if}
-{/if}
+</div>
 
 <BottomNav />
 

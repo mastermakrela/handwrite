@@ -7,7 +7,7 @@
   import FirstRunOverlay from "$lib/components/FirstRunOverlay.svelte";
   import { CHAR_GROUPS } from "$lib/handwrite/charsets";
   import {
-    cap, load, save, chars, importPasses, roundsDone, penOptions,
+    cap, load, save, chars, importPasses, roundsDone, fontBuildOptions, DEFAULT_FONT,
   } from "$lib/capture.svelte";
   import {
     buildFontBytes, registerPreviewFace, disposePreviewFace, PREVIEW_FAMILY, type PreviewFace,
@@ -29,7 +29,10 @@
   let sampleText = $state("the quick brown fox");
 
   // signature that changes whenever stroke data changes (E.5)
-  const sig = $derived(JSON.stringify(cap.passes.map((p) => Object.keys(p).sort())) + ":" + roundsDone() + ":" + cap.pen.size + ":" + cap.pen.thinning);
+  const sig = $derived(
+    JSON.stringify(cap.passes.map((p) => Object.keys(p).sort())) +
+      ":" + roundsDone() + ":" + cap.font.weight + ":" + cap.font.smoothing + ":" + cap.font.spacing + ":" + cap.pen.thinning,
+  );
 
   let rebuildScheduled = false;
   async function rebuild() {
@@ -37,7 +40,7 @@
     building = true;
     try {
       const charDefs = chars();
-      const { glyphs, bytes } = buildFontBytes(cap.passes, charDefs, { familyName: "My Handwriting", stroke: penOptions() });
+      const { glyphs, bytes } = buildFontBytes(cap.passes, charDefs, { familyName: "My Handwriting", build: fontBuildOptions() });
       glyphChars = new Set(glyphs.map((g) => g.char));
       if (bytes.length) {
         prev = await registerPreviewFace(bytes, prev, PREVIEW_FAMILY);
@@ -73,12 +76,16 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   function exportOtf() {
-    const { glyphs, bytes } = buildFontBytes(cap.passes, chars(), { familyName: "My Handwriting", stroke: penOptions() });
+    const { glyphs, bytes } = buildFontBytes(cap.passes, chars(), { familyName: "My Handwriting", build: fontBuildOptions() });
     if (!glyphs.length) return alert("Draw at least one character first.");
     download("MyHandwriting.otf", new Blob([bytes as unknown as BlobPart], { type: "font/otf" }));
   }
   function exportPasses() {
     download("handwriting-passes.json", new Blob([JSON.stringify(cap.passes)], { type: "application/json" }));
+  }
+  function setFont(next: Partial<{ weight: number; smoothing: number; spacing: number }>) {
+    cap.font = { ...cap.font, ...next };
+    save();
   }
   function onImport(e: Event) {
     const f = (e.target as HTMLInputElement).files?.[0];
@@ -145,6 +152,25 @@
       {#if building}<span class="status">Building your font…</span>{/if}
     </div>
     <p class="export-help">Your font updates automatically as you add rounds.</p>
+
+    <section class="block tune">
+      <span class="lbl">Fine-tune the font</span>
+      <div class="tune-grid">
+        <label class="t-slider">
+          <span class="srow"><span>Weight</span><span class="val">{cap.font.weight}</span></span>
+          <input type="range" min="14" max="64" step="2" value={cap.font.weight} oninput={(e) => setFont({ weight: +e.currentTarget.value })} />
+        </label>
+        <label class="t-slider">
+          <span class="srow"><span>Roundness</span><span class="val">{Math.round(cap.font.smoothing * 100)}%</span></span>
+          <input type="range" min="0" max="1" step="0.05" value={cap.font.smoothing} oninput={(e) => setFont({ smoothing: +e.currentTarget.value })} />
+        </label>
+        <label class="t-slider">
+          <span class="srow"><span>Letter spacing</span><span class="val">{cap.font.spacing}</span></span>
+          <input type="range" min="10" max="80" step="2" value={cap.font.spacing} oninput={(e) => setFont({ spacing: +e.currentTarget.value })} />
+        </label>
+      </div>
+      <button class="reset" onclick={() => setFont({ ...DEFAULT_FONT })}>Reset to defaults</button>
+    </section>
 
     <section class="block">
       <span class="lbl">Type anything</span>
@@ -274,6 +300,38 @@
   .block {
     border-top: 1px solid var(--rule);
     padding: 22px 0;
+  }
+  .tune-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px 28px;
+  }
+  .t-slider {
+    display: block;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  }
+  .t-slider .srow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .t-slider .val {
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .t-slider input[type="range"] {
+    width: 100%;
+    accent-color: var(--indigo);
+    height: 28px;
+  }
+  .reset {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    padding: 8px 14px;
   }
   .lbl {
     display: block;

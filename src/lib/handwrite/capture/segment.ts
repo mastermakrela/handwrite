@@ -37,15 +37,21 @@ export function assignStrokesToSegments(strokes: Stroke[], dividerXs: number[]):
 }
 
 /**
- * Propose divider x-positions that split the writing into letters at the widest
- * pen-lift gaps. Multi-stroke letters (the stem + crossbar of "t", the stem +
- * dot of "i"/"j", the two strokes of "x"/"k") must NOT be split, so overlapping
- * or near-touching strokes are first merged into per-letter clusters; dividers
- * are then placed only in the real gaps *between* clusters. Never returns more
- * dividers than there are between-cluster gaps (so it can't over-segment when
- * fewer letters were written than `targetCount`). Pure; does not mutate inputs.
+ * Propose divider x-positions that split the writing into the bands of `target`
+ * (its token list, INCLUDING spaces). Two things matter:
+ *  - Multi-stroke letters (stem+crossbar of "t", stem+dot of "i"/"j", "x"/"k")
+ *    must NOT be split, so overlapping/near-touching strokes are first merged
+ *    into per-letter clusters.
+ *  - Word SPACES are real bands: between two letters separated by a space we
+ *    place TWO dividers so an empty band forms for the space token (otherwise
+ *    every letter after the first space is off by one).
+ * When the clusters map 1:1 onto the non-space tokens, placement is exact and
+ * yields exactly `target.length - 1` dividers (so the round can be saved). If
+ * the counts don't line up (mis-written), it falls back to one divider per
+ * widest between-cluster gap. Pure; does not mutate inputs.
  */
-export function proposeDividers(strokes: Stroke[], targetCount: number): number[] {
+export function proposeDividers(strokes: Stroke[], target: string[]): number[] {
+  const targetCount = target.length;
   if (targetCount <= 1 || strokes.length < 2) return [];
   // 1. x-extent per stroke, ordered left→right by left edge
   const ext = strokes
@@ -76,7 +82,24 @@ export function proposeDividers(strokes: Stroke[], targetCount: number): number[
     else clusters.push({ min: ext[i].min, max: ext[i].max });
   }
 
-  // 4. gaps between clusters; place dividers in the largest, capped at what exists
+  // indices of the non-space (letter) tokens within target
+  const letterIdx: number[] = [];
+  for (let i = 0; i < target.length; i++) if (target[i] !== " ") letterIdx.push(i);
+
+  // 4a. exact, space-aware placement when clusters == letters
+  if (clusters.length >= 2 && clusters.length === letterIdx.length) {
+    const out: number[] = [];
+    for (let j = 0; j < clusters.length - 1; j++) {
+      const A = clusters[j].max;
+      const w = clusters[j + 1].min - A;
+      const spaces = letterIdx[j + 1] - letterIdx[j] - 1; // space tokens between these two letters
+      const n = 1 + spaces; // dividers needed to bound `spaces` empty bands
+      for (let k = 1; k <= n; k++) out.push(A + (w * k) / (n + 1));
+    }
+    return out; // already left→right
+  }
+
+  // 4b. fallback: one divider per widest between-cluster gap
   const gaps = clusters.slice(0, -1).map((c, i) => ({ pos: (c.max + clusters[i + 1].min) / 2, size: clusters[i + 1].min - c.max }));
   const need = Math.min(targetCount - 1, gaps.length);
   return gaps

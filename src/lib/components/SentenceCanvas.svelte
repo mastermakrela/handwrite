@@ -75,7 +75,7 @@
   });
 
   function markLetters() {
-    dividers = proposeDividers(strokes, target.length);
+    dividers = proposeDividers(strokes, target);
     tool = "divide";
     redraw();
   }
@@ -305,6 +305,11 @@
   }
   // redraw whenever inputs change
   $effect(() => { strokes; dividers; target; cap.pen.size; cap.pen.thinning; redraw(); });
+  // re-fit when the Write view is shown again (it stays mounted-but-hidden while
+  // on the Grid tab, where the canvas measures 0 and can't be drawn into)
+  $effect(() => {
+    if (cap.mode === "sentence") queueMicrotask(() => fit());
+  });
   $effect(() => {
     fit();
     const ro = new ResizeObserver(() => { fit(); checkScrollable(); });
