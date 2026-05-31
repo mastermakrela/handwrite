@@ -28,9 +28,17 @@ const ds = proposeDividers(spaced, ["a", " ", "b"]);
 const inGap = ds.filter((x) => x > 130 && x < 300);
 const spaceOk = ds.length === 2 && inGap.length === 2; // both dividers sit in the word gap → empty space band between them
 
-console.log("SMOKE — auto-divide clustering + spaces");
+// Fallback: when clusters don't match the letter count, it must STILL emit
+// exactly target.length-1 dividers (so the round can always be saved). 3
+// separated strokes (3 clusters) but a 4-letter target (needed = 3).
+const three: Stroke[] = [line(40, 90), line(160, 210), line(300, 350)];
+const df = proposeDividers(three, ["a", "b", "c", "d"]);
+const countOk = df.length === 3;
+
+console.log("SMOKE — auto-divide clustering + spaces + exact count");
 console.log("  t/i not split:  ", clusterOk ? "OK ✅ (2 dividers)" : `FAIL ❌ [${d.map(Math.round)}]`);
 console.log("  space bounded:  ", spaceOk ? "OK ✅ (2 dividers in gap)" : `FAIL ❌ [${ds.map(Math.round)}]`);
-const ok = clusterOk && spaceOk;
+console.log("  exact count:    ", countOk ? "OK ✅ (3 dividers)" : `FAIL ❌ (${df.length})`);
+const ok = clusterOk && spaceOk && countOk;
 console.log(ok ? "  RESULT: PASS ✅" : "  RESULT: FAIL ❌");
 process.exit(ok ? 0 : 1);

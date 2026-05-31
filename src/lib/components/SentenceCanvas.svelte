@@ -63,17 +63,6 @@
     !!cap.passes[cap.activePass] && Object.values(cap.passes[cap.activePass]).some((s) => s?.length),
   );
 
-  // ---- morphing primary CTA ----
-  type Cta = { label: string; action: () => void } | null;
-  const cta = $derived.by((): Cta => {
-    if (hasDrawn) {
-      if (canApply) return { label: "Save this round", action: apply };
-      return { label: "Mark the letters", action: markLetters };
-    }
-    if (activeHasContent) return { label: "Add another round", action: addRound };
-    return null; // nothing drawn, empty round → rely on inline hint
-  });
-
   function markLetters() {
     dividers = proposeDividers(strokes, target);
     tool = "divide";
@@ -373,14 +362,17 @@
       {:else if allMarked}All {neededLetters} letters marked{:else}{markedLetters} of {neededLetters} letters marked{/if}
     </span>
     <button onclick={clearAll}>clear</button>
-    {#if cta}
-      <button class="primary" onclick={cta.action}>{cta.label}</button>
+    {#if dividers.length === 0}
+      <button class="primary" onclick={markLetters}>Mark the letters</button>
+    {:else}
+      <button onclick={markLetters} title="Auto-place the dividers again">Re-mark</button>
+      <button class="primary" disabled={!canApply} onclick={apply}>Save this round</button>
     {/if}
   </div>
-{:else if cta}
+{:else if activeHasContent}
   <div class="bar">
     <span class="spacer"></span>
-    <button class="primary" onclick={cta.action}>{cta.label}</button>
+    <button class="primary" onclick={addRound}>Add another round</button>
   </div>
 {/if}
 
