@@ -1,9 +1,14 @@
 <script lang="ts">
-  import { cap, gotoPass, doneInPass, chars, profiles } from "$lib/capture.svelte";
+  import { cap, gotoPass, doneInPass, chars, profiles, roundsDone } from "$lib/capture.svelte";
 
-  let { onOpenProfiles, onOpenPen }: { onOpenProfiles: () => void; onOpenPen?: () => void } = $props();
+  let {
+    onOpenProfiles,
+    onOpenPen,
+    mode = "edit",
+  }: { onOpenProfiles: () => void; onOpenPen?: () => void; mode?: "edit" | "preview" } = $props();
 
   const total = $derived(Math.max(cap.target, cap.passes.length));
+  const done = $derived(roundsDone());
   const totalChars = $derived(chars().length);
   const activeName = $derived(profiles.list.find((p) => p.id === profiles.activeId)?.name ?? "Profile");
 
@@ -16,23 +21,32 @@
 <header>
   <a class="logo" href="/" title="About handwrite">handwrite</a>
 
-  <div class="meter" aria-label="Rounds progress">
-    <span class="meter-text">Round {cap.activePass + 1} of {total}</span>
-    <div class="dots">
-      {#each Array(total) as _, i (i)}
-        {@const real = i < cap.passes.length}
-        <button
-          class="dot"
-          class:filled={real && hasContent(i)}
-          class:current={i === cap.activePass}
-          disabled={!real}
-          onclick={() => real && gotoPass(i)}
-          aria-label={real ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters` : `Round ${i + 1}, not started`}
-          title={real ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters` : `Round ${i + 1}`}
-        ></button>
-      {/each}
+  {#if mode === "preview"}
+    <!-- Preview shows the combined font from every round, so the per-round
+         selector would be misleading here — show a static summary instead. -->
+    <div class="summary" aria-label="Preview of your full font">
+      <span class="meter-text">Your font</span>
+      <span class="summary-sub">{done} {done === 1 ? "round" : "rounds"}</span>
     </div>
-  </div>
+  {:else}
+    <div class="meter" aria-label="Rounds progress">
+      <span class="meter-text">Round {cap.activePass + 1} of {total}</span>
+      <div class="dots">
+        {#each Array(total) as _, i (i)}
+          {@const real = i < cap.passes.length}
+          <button
+            class="dot"
+            class:filled={real && hasContent(i)}
+            class:current={i === cap.activePass}
+            disabled={!real}
+            onclick={() => real && gotoPass(i)}
+            aria-label={real ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters` : `Round ${i + 1}, not started`}
+            title={real ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters` : `Round ${i + 1}`}
+          ></button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <span class="spacer"></span>
 
@@ -74,7 +88,7 @@
   .spacer {
     flex: 1;
   }
-  .meter {
+  .meter, .summary {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -83,6 +97,19 @@
     left: 50%;
     transform: translateX(-50%);
     top: calc(8px + env(safe-area-inset-top));
+  }
+  .summary { gap: 2px; }
+  .summary .meter-text {
+    font-family: "Shantell Sans", cursive;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--indigo);
+  }
+  .summary-sub {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    white-space: nowrap;
   }
   .meter-text {
     font-size: 0.78rem;
@@ -171,7 +198,7 @@
      profile button. Drop the wordy "Round N of M" label, keep the compact dots,
      and tighten the profile name so the three-up header stays clear. */
   @media (max-width: 700px) {
-    .meter-text {
+    .meter .meter-text {
       display: none;
     }
     .pname {

@@ -133,7 +133,7 @@
   onDestroy(() => disposePreviewFace(prev));
 </script>
 
-<TopBar onOpenProfiles={() => (showProfiles = true)} />
+<TopBar mode="preview" onOpenProfiles={() => (showProfiles = true)} />
 
 {#if mounted && !unlocked}
   <main class="empty">
