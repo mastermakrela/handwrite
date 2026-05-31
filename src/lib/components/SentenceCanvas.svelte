@@ -24,7 +24,6 @@
 
   const G = { baselineY: BASELINE_FRAC * VIRT, xHeightY: XHEIGHT_FRAC * VIRT };
   const segments = $derived(assignStrokesToSegments(strokes, dividers));
-  const canApply = $derived(target.length > 0 && dividers.length + 1 === target.length);
 
   // ---- progressive disclosure + plain-language counters ----
   const hasDrawn = $derived(strokes.length > 0);
@@ -38,6 +37,11 @@
   // strokes whose centroid lands past the last target band (over-count warning,
   // mirrored here in text so it is not signalled by red colour alone)
   const extraStrokes = $derived(segments.slice(target.length).reduce((n, seg) => n + seg.length, 0));
+
+  // Save as soon as ≥1 letter is marked and nothing spills past the phrase. This
+  // lets an incomplete line save the letters captured so far — positional mapping
+  // (band i → token i) means the unwritten tail is simply skipped on apply.
+  const canApply = $derived(markedLetters >= 1 && extraStrokes === 0);
 
   // Text alternative for the otherwise-silent drawing canvas + an aria-live
   // status so screen-reader users hear marking progress and the over-count warning.
@@ -380,8 +384,8 @@
   {#if !hasDrawn}
     Write the whole sentence in print — lift the Pencil between letters.
   {:else if !allMarked}
-    Tap <b>Mark the letters</b> to auto-place dividers, then nudge any boundary with the <b>divide</b> tool until every
-    letter is marked.
+    Tap <b>Mark the letters</b> to auto-place dividers, then nudge any boundary with the <b>divide</b> tool. No room for
+    the whole phrase? <b>Save this round</b> keeps the letters marked so far — write the rest in another round.
   {:else}
     Looks good — tap <b>Save this round</b> to store these letters, then add another round.
   {/if}

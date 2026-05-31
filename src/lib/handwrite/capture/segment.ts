@@ -82,44 +82,21 @@ export function proposeDividers(strokes: Stroke[], target: string[]): number[] {
     else clusters.push({ min: ext[i].min, max: ext[i].max });
   }
 
-  // indices of the non-space (letter) tokens within target
+  // Map clusters positionally onto the FIRST clusters.length letters of the
+  // phrase, so an incomplete line just covers a prefix (no padding to the full
+  // phrase — that's what lets a partial round still be saved). Between two
+  // written letters: one divider, plus one extra per word-space that sits
+  // between them (so the space gets its own empty band).
   const letterIdx: number[] = [];
   for (let i = 0; i < target.length; i++) if (target[i] !== " ") letterIdx.push(i);
 
-  // gaps between consecutive clusters
-  const gaps = clusters.slice(0, -1).map((c, i) => ({ A: c.max, w: clusters[i + 1].min - c.max, idx: i }));
-  if (gaps.length === 0) return [];
-  const needed = targetCount - 1; // dividers to make `targetCount` bands (letters + spaces)
-
-  // decide how many dividers each gap carries — ALWAYS summing to exactly `needed`
-  // so the round can be saved. A gap with n dividers yields n-1 empty inner bands
-  // (that's how a word space gets its band: two dividers around the widest gap).
-  const perGap = new Array<number>(gaps.length).fill(0);
-  if (clusters.length === letterIdx.length) {
-    // exact: clusters line up 1:1 with letters → use the token structure directly
-    for (let j = 0; j < gaps.length; j++) perGap[j] = 1 + (letterIdx[j + 1] - letterIdx[j] - 1);
-  } else {
-    // robust: one divider per gap (widest first), then pile the remaining
-    // (the word-gap "second" dividers) onto the widest gaps. The widest gaps are
-    // the word spaces, so they correctly become two-divider empty bands.
-    const widest = [...gaps].sort((a, b) => b.w - a.w).map((g) => g.idx);
-    let remaining = needed;
-    for (const idx of widest) {
-      if (remaining <= 0) break;
-      perGap[idx] += 1;
-      remaining -= 1;
-    }
-    for (let oi = 0; remaining > 0; oi++) {
-      perGap[widest[oi % widest.length]] += 1;
-      remaining -= 1;
-    }
-  }
-
-  // place perGap[j] dividers evenly inside each gap
   const out: number[] = [];
-  for (const g of gaps) {
-    const n = perGap[g.idx];
-    for (let k = 1; k <= n; k++) out.push(g.A + (g.w * k) / (n + 1));
+  for (let j = 0; j < clusters.length - 1; j++) {
+    const A = clusters[j].max;
+    const w = clusters[j + 1].min - A;
+    const spaces = j + 1 < letterIdx.length ? Math.max(0, letterIdx[j + 1] - letterIdx[j] - 1) : 0;
+    const n = 1 + spaces;
+    for (let k = 1; k <= n; k++) out.push(A + (w * k) / (n + 1));
   }
   return out.sort((a, b) => a - b);
 }
