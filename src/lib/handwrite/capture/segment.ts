@@ -37,6 +37,40 @@ export function assignStrokesToSegments(strokes: Stroke[], dividerXs: number[]):
 }
 
 /**
+ * Propose divider x-positions so that strokes split into `targetCount` bands,
+ * preferring the widest pen-lift gaps between horizontally-sorted strokes.
+ * Returns targetCount-1 x positions (sorted). Pure; does not mutate inputs.
+ */
+export function proposeDividers(strokes: Stroke[], targetCount: number): number[] {
+  if (targetCount <= 1 || strokes.length < 2) return [];
+  // 1. order strokes left→right by centroid
+  const items = strokes
+    .map((s) => {
+      let min = Infinity,
+        max = -Infinity;
+      for (const p of s) {
+        if (p.x < min) min = p.x;
+        if (p.x > max) max = p.x;
+      }
+      return { min, max, cx: strokeCentroidX(s) };
+    })
+    .sort((a, b) => a.cx - b.cx);
+  // 2. gap between consecutive strokes = next.min - prev.max (the pen-lift space)
+  const gaps: { pos: number; size: number; i: number }[] = [];
+  for (let i = 0; i < items.length - 1; i++) {
+    gaps.push({ pos: (items[i].max + items[i + 1].min) / 2, size: items[i + 1].min - items[i].max, i });
+  }
+  // 3. need targetCount-1 dividers; pick the largest gaps, then return sorted by position
+  const need = Math.min(targetCount - 1, gaps.length);
+  return gaps
+    .slice()
+    .sort((a, b) => b.size - a.size)
+    .slice(0, need)
+    .map((g) => g.pos)
+    .sort((a, b) => a - b);
+}
+
+/**
  * Map one segment's strokes from sentence-canvas coords into the per-char VIRT
  * cell convention used by grid cells (and thus by `glyphsFromPasses`).
  *

@@ -1,0 +1,35 @@
+/**
+ * App-wide a11y baseline shared by every route (landing, app, preview).
+ * Keeps the existing per-route OKLCH tokens and palm-safe rules intact; this
+ * only adds a visible keyboard focus ring and a reduced-motion guard that were
+ * previously missing from the capture UI.
+ */
+
+/* WCAG 2.4.7 — a visible focus indicator for every keyboard-operable control.
+   Components may drop the OS outline, but they must not leave users with no
+   focus affordance; this provides a consistent indigo ring everywhere. */
+:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--indigo, #4a38aa);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* WCAG 2.3.3 — honour reduced-motion across the whole app. Marketing page
+   already gates its own animation; this covers the capture/preview UI. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  button:hover,
+  a:hover,
+  [class*="navitem"]:hover,
+  [class*="primary"]:hover,
+  [class*="dot"] {
+    transform: none !important;
+  }
+}

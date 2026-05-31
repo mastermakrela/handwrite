@@ -25,8 +25,8 @@ export const cap = $state({
   passes: [{}] as Pass[],
   activePass: 0,
   enabled: ["lower", "upper", "digits", "punct"] as string[],
-  target: 5,
-  mode: "grid" as "grid" | "sentence",
+  target: 3,
+  mode: "sentence" as "grid" | "sentence",
 });
 
 /** transient UI state (not persisted) */
@@ -46,8 +46,10 @@ function applyToCap(s: Partial<Snapshot> | null) {
   cap.passes = s?.passes?.length ? s.passes : [{}];
   cap.activePass = Math.min(s?.activePass ?? 0, cap.passes.length - 1);
   cap.enabled = s?.enabled ?? ["lower", "upper", "digits", "punct"];
-  cap.target = s?.target ?? 5;
-  cap.mode = s?.mode === "sentence" ? "sentence" : "grid";
+  cap.target = s?.target ?? 3;
+  // Default opening view is Write (sentence). Existing profiles persist a mode and
+  // keep it; only new/blank snapshots (no stored mode) fall back to sentence.
+  cap.mode = s?.mode === "grid" ? "grid" : "sentence";
   ui.importTick++; // force any in-progress stroke on every canvas to reset
 }
 function loadActiveData() {
@@ -62,15 +64,19 @@ export function load() {
   try {
     const reg = JSON.parse(localStorage.getItem(REG_KEY) || "null");
     if (reg?.list?.length) {
-      profiles.list = reg.list;
-      profiles.activeId = reg.list.some((p: Profile) => p.id === reg.activeId) ? reg.activeId : reg.list[0].id;
+      // gentle rename of the old auto-seeded "Default" profile to "you"
+      profiles.list = reg.list.map((p: Profile) => (p.name === "Default" ? { ...p, name: "you" } : p));
+      profiles.activeId = profiles.list.some((p) => p.id === reg.activeId) ? reg.activeId : profiles.list[0].id;
+      if (profiles.list.some((p, i) => reg.list[i]?.name !== p.name)) saveRegistry();
     } else {
-      // first run — seed a Default profile, migrating any pre-profile data into it
-      const id = newId();
-      profiles.list = [{ id, name: "Default" }];
-      profiles.activeId = id;
+      // first run — seed "you" (active, gets any migrated data) plus an example
+      // second persona so the profile switcher is self-explanatory.
+      const youId = newId();
+      const friendId = newId();
+      profiles.list = [{ id: youId, name: "you" }, { id: friendId, name: "your friend" }];
+      profiles.activeId = youId;
       const legacy = localStorage.getItem(LEGACY_KEY);
-      if (legacy) localStorage.setItem(dataKey(id), legacy); // (LEGACY_KEY stays as an extra backup)
+      if (legacy) localStorage.setItem(dataKey(youId), legacy); // (LEGACY_KEY stays as an extra backup)
       saveRegistry();
     }
     loadActiveData();
@@ -115,6 +121,11 @@ export function deleteProfile(id: string) {
     loadActiveData();
   }
   saveRegistry();
+}
+
+/** Number of rounds that have at least one character drawn. */
+export function roundsDone(): number {
+  return cap.passes.filter((p) => Object.values(p).some((s) => s?.length)).length;
 }
 
 export function newPass() {

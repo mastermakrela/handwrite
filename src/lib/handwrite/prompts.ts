@@ -25,6 +25,8 @@ export function promptChars(text: string): string[] {
 const p = (id: string, group: string, text: string): Prompt => ({ id, group, text, chars: promptChars(text) });
 
 export const PROMPTS: Prompt[] = [
+  // full pangram (default phrase) — the round model writes this whole line each round
+  p("pangram", "lower", "the quick brown fox jumps over the lazy dog"),
   // lowercase pangram, split — together covers a–z
   p("lower-1", "lower", "the quick brown"),
   p("lower-2", "lower", "fox jumps over"),

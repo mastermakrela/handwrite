@@ -2,64 +2,46 @@
   import { onMount } from "svelte";
   import Cell from "$lib/components/Cell.svelte";
   import SentenceCanvas from "$lib/components/SentenceCanvas.svelte";
+  import BottomNav from "$lib/components/BottomNav.svelte";
+  import TopBar from "$lib/components/TopBar.svelte";
+  import ProfileSheet from "$lib/components/ProfileSheet.svelte";
+  import FirstRunOverlay from "$lib/components/FirstRunOverlay.svelte";
   import { CHAR_GROUPS } from "$lib/handwrite/charsets";
-  import {
-    cap, load, save, newPass, gotoPass, toggleGroup, importPasses, doneInPass, chars,
-    profiles, createProfile, switchProfile, renameProfile, deleteProfile,
-  } from "$lib/capture.svelte";
-  import { glyphsFromPasses } from "$lib/handwrite/font/glyph-from-passes";
-  import { buildFont, fontToUint8Array } from "$lib/handwrite/font/opentype-builder";
-  import { DEFAULT_METRICS } from "$lib/handwrite/types";
+  import { cap, load, save, newPass, toggleGroup, doneInPass, chars } from "$lib/capture.svelte";
+
+  const SEEN_KEY = "handwrite.seen.v1";
 
   const groups = $derived(CHAR_GROUPS.filter((g) => cap.enabled.includes(g.id)));
-  const total = $derived(chars().length);
-  const done = $derived(doneInPass(cap.activePass));
+  const extraGroups = $derived(groups.filter((g) => g.id !== "lower"));
+  const lowerGroup = $derived(CHAR_GROUPS.find((g) => g.id === "lower"));
 
-  function download(name: string, blob: Blob) {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-  function exportOtf() {
-    const glyphs = glyphsFromPasses(cap.passes, chars());
-    if (!glyphs.length) return alert("Draw at least one character first.");
-    const font = buildFont({ familyName: "My Handwriting", styleName: "Regular", ...DEFAULT_METRICS, glyphs });
-    download("MyHandwriting.otf", new Blob([fontToUint8Array(font) as unknown as BlobPart], { type: "font/otf" }));
-  }
-  function exportPasses() {
-    download("handwriting-passes.json", new Blob([JSON.stringify(cap.passes)], { type: "application/json" }));
-  }
-  function onImport(e: Event) {
-    const f = (e.target as HTMLInputElement).files?.[0];
-    if (!f) return;
-    f.text().then((t) => {
-      try {
-        const parsed = JSON.parse(t);
-        importPasses(Array.isArray(parsed) ? parsed : [parsed]);
-      } catch { alert("Could not read that file."); }
-    });
-  }
+  let showProfiles = $state(false);
+  let showIntro = $state(false);
+  let showMoreChars = $state(false);
 
-  function addProfile() {
-    const name = prompt("New profile name?", "");
-    if (name === null) return; // cancelled
-    createProfile(name);
+  // Grid CTA: "Add another round" once the active round has at least one char drawn.
+  const activeHasContent = $derived(
+    !!cap.passes[cap.activePass] && Object.values(cap.passes[cap.activePass]).some((s) => s?.length),
+  );
+
+  function dismissIntro() {
+    showIntro = false;
+    try {
+      localStorage.setItem(SEEN_KEY, "1");
+    } catch {}
   }
-  function renameActive() {
-    const cur = profiles.list.find((p) => p.id === profiles.activeId);
-    const name = prompt("Rename profile", cur?.name ?? "");
-    if (name === null) return;
-    renameProfile(profiles.activeId, name);
-  }
-  function deleteActive() {
-    const cur = profiles.list.find((p) => p.id === profiles.activeId);
-    if (confirm(`Delete profile “${cur?.name}” and all its strokes? This can't be undone.`)) deleteProfile(profiles.activeId);
+  function reopenIntro() {
+    try {
+      localStorage.removeItem(SEEN_KEY);
+    } catch {}
+    showIntro = true;
   }
 
   onMount(() => {
     load();
+    try {
+      if (localStorage.getItem(SEEN_KEY) !== "1") showIntro = true;
+    } catch {}
     // Ask the browser to keep our local strokes from being evicted under storage
     // pressure / privacy timers (best-effort; not all browsers honour it).
     navigator.storage?.persist?.();
@@ -74,54 +56,60 @@
   });
 </script>
 
-<header>
-  <a class="logo" href="/" title="About handwrite">handwrite</a>
-  <div class="profile">
-    <select aria-label="profile" value={profiles.activeId} onchange={(e) => switchProfile(e.currentTarget.value)}>
-      {#each profiles.list as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-    </select>
-    <button onclick={addProfile} aria-label="new profile" title="New profile">+</button>
-    <button onclick={renameActive} aria-label="rename profile" title="Rename profile">✎</button>
-    <button onclick={deleteActive} disabled={profiles.list.length <= 1} aria-label="delete profile" title="Delete profile">🗑</button>
-  </div>
-  <div class="modes">
-    <button class:on={cap.mode === "grid"} onclick={() => (cap.mode = "grid", save())}>grid</button>
-    <button class:on={cap.mode === "sentence"} onclick={() => (cap.mode = "sentence", save())}>sentence</button>
-  </div>
-  <div class="passes">
-    <button onclick={() => gotoPass(cap.activePass - 1)} disabled={cap.activePass === 0} aria-label="previous pass">◂</button>
-    <span class="passlabel">pass {cap.activePass + 1}/{cap.passes.length} · <b>{done}/{total}</b></span>
-    <button onclick={() => gotoPass(cap.activePass + 1)} disabled={cap.activePass >= cap.passes.length - 1} aria-label="next pass">▸</button>
-    <button class="primary" onclick={newPass}>+ pass</button>
-  </div>
-  <span class="spacer"></span>
-  <button onclick={exportOtf}>⬇︎ .otf</button>
-  <button onclick={exportPasses}>⬇︎ passes</button>
-  <label class="btn">Import<input type="file" accept="application/json" onchange={onImport} /></label>
-</header>
-
-<div class="sub">
-  <span class="hint">
-    Write each character on the solid baseline. Aim for <b>{cap.target} passes</b> — the previous pass shows faint underneath so you can trace it, and the passes become alternates so your font varies naturally. Pencil only (palm-safe); everything stays on your device.
-  </span>
-  <span class="chips">
-    {#each CHAR_GROUPS as g}
-      <button class="chip" class:on={cap.enabled.includes(g.id)} onclick={() => toggleGroup(g.id)}>{g.label}</button>
-    {/each}
-  </span>
-</div>
+<TopBar onOpenProfiles={() => (showProfiles = true)} />
 
 {#if cap.mode === "sentence"}
   <SentenceCanvas />
 {:else}
   <main>
-    {#each groups as g (g.id)}
-      <div class="group">{g.label}</div>
-      {#each g.chars as ch (ch.char)}
+    {#if lowerGroup}
+      <div class="group">{lowerGroup.label}</div>
+      {#each lowerGroup.chars as ch (ch.char)}
         <Cell char={ch.char} />
       {/each}
-    {/each}
+    {/if}
+
+    <div class="disclosure">
+      <button class="disc-btn" onclick={() => (showMoreChars = !showMoreChars)} aria-expanded={showMoreChars}>
+        {showMoreChars ? "▾" : "▸"} Add more characters
+      </button>
+      {#if showMoreChars}
+        <div class="chips">
+          <!-- lowercase is always-on (rendered above unconditionally), so it is
+               not offered as a toggle here — its chip state could otherwise
+               disagree with the always-visible lowercase cells. -->
+          {#each CHAR_GROUPS.filter((g) => g.id !== "lower") as g (g.id)}
+            <button class="chip" class:on={cap.enabled.includes(g.id)} onclick={() => toggleGroup(g.id)}>{g.label}</button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    {#if showMoreChars}
+      {#each extraGroups as g (g.id)}
+        <div class="group">{g.label}</div>
+        {#each g.chars as ch (ch.char)}
+          <Cell char={ch.char} />
+        {/each}
+      {/each}
+    {/if}
   </main>
+
+  {#if activeHasContent}
+    <div class="cta-row">
+      <button class="primary" onclick={newPass}>Add another round</button>
+    </div>
+  {/if}
+{/if}
+
+<BottomNav />
+
+{#if showProfiles}
+  <ProfileSheet onClose={() => (showProfiles = false)} onShowIntro={reopenIntro} />
+{/if}
+
+{#if showIntro}
+  <FirstRunOverlay onDismiss={dismissIntro} />
 {/if}
 
 <style>
@@ -140,60 +128,117 @@
     --muted: var(--ink-soft);
   }
   :global(html, body) {
-    margin: 0; background: var(--paper); color: var(--ink);
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
     font-family: "Bricolage Grotesque", system-ui, sans-serif;
     font-optical-sizing: auto;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    touch-action: pan-y; -webkit-text-size-adjust: 100%;
-    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    touch-action: pan-y;
+    -webkit-text-size-adjust: 100%;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
     overscroll-behavior-y: contain;
   }
-  header {
-    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: calc(10px + env(safe-area-inset-top)) clamp(14px, 4vw, 28px) 10px;
-    background: color-mix(in oklch, var(--paper) 88%, transparent);
-    backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule);
-  }
-  .logo {
-    font-family: "Shantell Sans", cursive; font-weight: 600; font-size: 1.6rem;
-    color: var(--indigo); text-decoration: none; letter-spacing: -0.01em; line-height: 1;
-  }
-  .profile { display: flex; align-items: center; gap: 4px; }
-  .profile select {
-    font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--ink); background: var(--paper-deep);
-    border: 1px solid var(--rule); border-radius: 11px; padding: 7px 10px; max-width: 11rem;
-  }
-  .profile button { padding: 7px 10px; font-size: 0.85rem; }
-  .modes { display: flex; gap: 4px; }
-  .modes button { font-size: 0.82rem; padding: 6px 12px; }
-  .modes button.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
-  .passes { display: flex; align-items: center; gap: 6px; }
-  .passlabel { font-size: 0.85rem; color: var(--ink-soft); white-space: nowrap; }
-  .passlabel b { color: var(--ink); }
-  .spacer { flex: 1; }
-  button, label.btn {
-    font: inherit; font-weight: 600; font-size: 0.88rem; border: 1px solid var(--rule); background: var(--paper-deep);
-    color: var(--ink); padding: 8px 12px; border-radius: 11px; cursor: pointer;
+  button {
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border: 1px solid var(--rule);
+    background: var(--paper-deep);
+    color: var(--ink);
+    padding: 8px 12px;
+    border-radius: 11px;
+    cursor: pointer;
     transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  button:not(:disabled):hover, label.btn:hover {
-    border-color: var(--indigo); color: var(--indigo); transform: translateY(-1px);
+  button:not(:disabled):hover {
+    border-color: var(--indigo);
+    color: var(--indigo);
+    transform: translateY(-1px);
   }
-  button.primary { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
-  button.primary:not(:disabled):hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
-  .modes button.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
-  button:disabled { opacity: 0.4; cursor: default; }
-  label.btn input { display: none; }
-  .sub { padding: 10px clamp(14px, 4vw, 28px) 0; display: flex; flex-direction: column; gap: 10px; }
-  .hint { color: var(--ink-soft); font-size: 0.82rem; line-height: 1.5; max-width: 70ch; }
-  .hint b { color: var(--ink); font-weight: 700; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip { font-size: 0.78rem; padding: 5px 12px; border-radius: 999px; color: var(--ink-soft); }
-  .chip:not(:disabled):hover { transform: none; }
-  .chip.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
-  .chip.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
-  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; padding: 14px clamp(14px, 4vw, 28px) 56px; align-items: start; }
-  .group { grid-column: 1 / -1; color: var(--indigo); font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; margin-top: 10px; }
-  .group:first-child { margin-top: 0; }
+  button.primary {
+    background: var(--indigo);
+    color: var(--paper);
+    border-color: var(--indigo);
+  }
+  button.primary:not(:disabled):hover {
+    background: var(--indigo-bright);
+    border-color: var(--indigo-bright);
+    color: var(--paper);
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .chip {
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border-radius: 999px;
+    color: var(--ink-soft);
+  }
+  .chip:not(:disabled):hover {
+    transform: none;
+  }
+  .chip.on {
+    background: var(--indigo);
+    color: var(--paper);
+    border-color: var(--indigo);
+  }
+  .chip.on:hover {
+    background: var(--indigo-bright);
+    border-color: var(--indigo-bright);
+    color: var(--paper);
+  }
+  main {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 12px;
+    padding: 14px clamp(14px, 4vw, 28px) 84px;
+    align-items: start;
+  }
+  .group {
+    grid-column: 1 / -1;
+    color: var(--indigo);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-top: 10px;
+  }
+  .group:first-child {
+    margin-top: 0;
+  }
+  .disclosure {
+    grid-column: 1 / -1;
+    margin-top: 16px;
+  }
+  .disc-btn {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+  }
+  .cta-row {
+    position: sticky;
+    bottom: 84px;
+    z-index: 4;
+    display: flex;
+    justify-content: center;
+    padding: 0 clamp(14px, 4vw, 28px) 12px;
+    pointer-events: none;
+  }
+  .cta-row .primary {
+    pointer-events: auto;
+    font-size: 1rem;
+    padding: 13px 26px;
+    border-radius: 13px;
+    box-shadow: 0 8px 24px oklch(47% 0.15 277 / 0.3);
+  }
 </style>
