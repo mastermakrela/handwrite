@@ -39,16 +39,19 @@ export const cap = $state({
   font: { ...DEFAULT_FONT } as FontTune,
 });
 
+/** perfect-freehand settings shared by on-screen ink and font building (pen pressure comes from the device, not simulated). */
+const FREEHAND_BASE = { streamline: 0.5, simulatePressure: false } as const;
+
 /** Full perfect-freehand options derived from the current pen (the on-screen ink). */
 export function penOptions() {
-  return { size: cap.pen.size, thinning: cap.pen.thinning, smoothing: 0.5, streamline: 0.5, simulatePressure: false };
+  return { ...FREEHAND_BASE, size: cap.pen.size, thinning: cap.pen.thinning, smoothing: 0.5 };
 }
 
 /** glyph-build options derived from the Preview-page font tuning (drives preview + export). */
 export function fontBuildOptions() {
   return {
     sideBearing: cap.font.spacing,
-    stroke: { size: cap.font.weight, thinning: cap.pen.thinning, smoothing: cap.font.smoothing, streamline: 0.5, simulatePressure: false },
+    stroke: { ...FREEHAND_BASE, size: cap.font.weight, thinning: cap.pen.thinning, smoothing: cap.font.smoothing },
   };
 }
 

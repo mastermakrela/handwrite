@@ -5,6 +5,8 @@
 
   const onPreview = $derived(page.url.pathname === "/app/preview");
   const previewUnlocked = $derived(roundsDone() >= 1);
+  // the highlighted tab: a capture mode while on /app, or none while on Preview
+  const activeMode = $derived(onPreview ? null : cap.mode);
 
   function goWrite() {
     cap.mode = "sentence";
@@ -23,11 +25,11 @@
 </script>
 
 <nav class="bottomnav" aria-label="Views">
-  <button class="navitem" class:on={!onPreview && cap.mode === "sentence"} onclick={goWrite} aria-current={!onPreview && cap.mode === "sentence" ? "page" : undefined}>
+  <button class="navitem" class:on={activeMode === "sentence"} onclick={goWrite} aria-current={activeMode === "sentence" ? "page" : undefined}>
     <span class="glyph" aria-hidden="true">✎</span>
     <span class="label">Write</span>
   </button>
-  <button class="navitem" class:on={!onPreview && cap.mode === "grid"} onclick={goGrid} aria-current={!onPreview && cap.mode === "grid" ? "page" : undefined}>
+  <button class="navitem" class:on={activeMode === "grid"} onclick={goGrid} aria-current={activeMode === "grid" ? "page" : undefined}>
     <span class="glyph" aria-hidden="true">▦</span>
     <span class="label">Grid</span>
   </button>

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { getStroke } from "perfect-freehand";
   import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
-  import { cap, ui, getStrokes, setStrokes, onionStrokes, penOptions, type Stroke, type Pt } from "$lib/capture.svelte";
+  import { strokePath as path } from "$lib/handwrite/capture/stroke-path";
+  import { cap, ui, getStrokes, setStrokes, onionStrokes, type Stroke, type Pt } from "$lib/capture.svelte";
 
   let { char }: { char: string } = $props();
 
@@ -14,16 +14,6 @@
   // the ✕ button and "done" styling react the instant a stroke is saved.
   const committed = $derived(getStrokes(char));
   const onion = $derived(onionStrokes(char));
-
-  function path(s: Stroke): Path2D | null {
-    if (s.length === 0) return null;
-    const o = getStroke(s.map((p) => [p.x, p.y, p.pressure ?? 0.5]), penOptions()) as number[][];
-    if (o.length < 2) return null;
-    const p = new Path2D();
-    o.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y)));
-    p.closePath();
-    return p;
-  }
 
   function fit() {
     if (!canvas) return;

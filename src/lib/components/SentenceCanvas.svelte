@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { getStroke } from "perfect-freehand";
   import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
+  import { strokePath as path } from "$lib/handwrite/capture/stroke-path";
   import { assignStrokesToSegments, normalizeSegmentToCell, proposeDividers } from "$lib/handwrite/capture/segment";
   import { PROMPTS, promptChars } from "$lib/handwrite/prompts";
-  import { ui, applySentence, newPass, cap, penOptions, type Stroke, type Pt } from "$lib/capture.svelte";
+  import { ui, applySentence, newPass, cap, type Stroke, type Pt } from "$lib/capture.svelte";
 
   // ---- prompt selection ----
   let promptIdx = $state(0);
@@ -24,6 +24,7 @@
 
   const G = { baselineY: BASELINE_FRAC * VIRT, xHeightY: XHEIGHT_FRAC * VIRT };
   const segments = $derived(assignStrokesToSegments(strokes, dividers));
+  const sortedDividers = $derived([...dividers].sort((a, b) => a - b));
 
   // ---- progressive disclosure + plain-language counters ----
   const hasDrawn = $derived(strokes.length > 0);
@@ -85,16 +86,6 @@
     if (scroller) scrollable = scroller.scrollWidth - scroller.clientWidth > 4;
   }
 
-  function path(s: Stroke): Path2D | null {
-    if (s.length === 0) return null;
-    const o = getStroke(s.map((p) => [p.x, p.y, p.pressure ?? 0.5]), penOptions()) as number[][];
-    if (o.length < 2) return null;
-    const p = new Path2D();
-    o.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y)));
-    p.closePath();
-    return p;
-  }
-
   /** virtual canvas width (height maps to VIRT; uniform scale keeps aspect). */
   function vWidth(): number {
     const r = canvas?.getBoundingClientRect();
@@ -122,7 +113,7 @@
     ctx.clearRect(0, 0, VW, VIRT);
 
     // segment tint bands (alternating) between sorted divider boundaries
-    const bounds = [0, ...[...dividers].sort((a, b) => a - b), VW];
+    const bounds = [0, ...sortedDividers, VW];
     for (let k = 0; k < bounds.length - 1; k++) {
       const beyond = k >= target.length;
       ctx.fillStyle = beyond ? "rgba(220,80,80,0.10)" : k % 2 ? "rgba(74,56,170,0.05)" : "rgba(74,56,170,0.10)";
