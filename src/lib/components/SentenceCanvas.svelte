@@ -68,12 +68,12 @@
     const bounds = [0, ...[...dividers].sort((a, b) => a - b), VW];
     for (let k = 0; k < bounds.length - 1; k++) {
       const beyond = k >= target.length;
-      ctx.fillStyle = beyond ? "rgba(220,80,80,0.10)" : k % 2 ? "rgba(59,63,158,0.05)" : "rgba(59,63,158,0.10)";
+      ctx.fillStyle = beyond ? "rgba(220,80,80,0.10)" : k % 2 ? "rgba(74,56,170,0.05)" : "rgba(74,56,170,0.10)";
       ctx.fillRect(bounds[k], 0, bounds[k + 1] - bounds[k], VIRT);
       // target-char label near the top of each band (space tokens stay blank)
       const ch = target[k];
       if (ch && ch !== " ") {
-        ctx.fillStyle = "#aeb6c9";
+        ctx.fillStyle = "#9aa0c8";
         ctx.font = `${0.16 * VIRT}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
@@ -82,7 +82,7 @@
     }
 
     // guides
-    ctx.strokeStyle = "#d7def0";
+    ctx.strokeStyle = "#cdd2ee";
     ctx.lineWidth = px;
     ctx.beginPath(); ctx.moveTo(0, BASELINE_FRAC * VIRT); ctx.lineTo(VW, BASELINE_FRAC * VIRT); ctx.stroke();
     ctx.setLineDash([4 * px, 4 * px]);
@@ -91,15 +91,15 @@
 
     // ink — strokes in a band beyond the target count are warned (red)
     for (let k = 0; k < segments.length; k++) {
-      ctx.fillStyle = k >= target.length ? "#c0392b" : "#1d2347";
+      ctx.fillStyle = k >= target.length ? "#c0392b" : "#1b1f3b";
       for (const s of segments[k]) { const p = path(s); if (p) ctx.fill(p); }
     }
-    if (active) { ctx.fillStyle = "#1d2347"; const p = path(active); if (p) ctx.fill(p); }
+    if (active) { ctx.fillStyle = "#1b1f3b"; const p = path(active); if (p) ctx.fill(p); }
 
     // dividers (vertical lines with a small ✕ affordance at the top)
-    ctx.strokeStyle = "#3b3f9e";
+    ctx.strokeStyle = "#4a38aa";
     ctx.lineWidth = 2 * px;
-    ctx.fillStyle = "#3b3f9e";
+    ctx.fillStyle = "#4a38aa";
     ctx.font = `${0.12 * VIRT}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -277,28 +277,54 @@
 </p>
 
 <style>
-  .prompts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 10px 16px 0; }
+  .prompts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 12px clamp(14px, 4vw, 28px) 0; }
   .chip {
-    font: inherit; font-size: 0.78rem; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line);
-    background: #fff; color: var(--muted); cursor: pointer; font-weight: 600;
+    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 0.78rem;
+    padding: 5px 12px; border-radius: 999px; border: 1px solid var(--rule);
+    background: var(--paper-deep); color: var(--ink-soft); cursor: pointer; font-weight: 600;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
   }
-  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .custom { font: inherit; font-size: 0.8rem; padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; min-width: 140px; }
-  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px; }
+  .chip:hover { border-color: var(--indigo); color: var(--indigo); }
+  .chip.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
+  .chip.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
+  .custom {
+    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 0.8rem;
+    padding: 6px 11px; border: 1px solid var(--rule); border-radius: 11px; min-width: 140px;
+    background: var(--paper-deep); color: var(--ink);
+  }
+  .custom::placeholder { color: var(--ink-soft); }
+  .custom:focus-visible { outline: none; border-color: var(--indigo); }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px clamp(14px, 4vw, 28px); }
   .tools { display: flex; gap: 4px; }
-  .tools button { font: inherit; font-weight: 600; font-size: 0.84rem; border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 7px 12px; border-radius: 10px; cursor: pointer; }
-  .tools button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .ref { font-size: 1.1rem; letter-spacing: 0.12em; color: #aeb6c9; font-weight: 600; }
+  .tools button {
+    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 600; font-size: 0.84rem;
+    border: 1px solid var(--rule); background: var(--paper-deep); color: var(--ink); padding: 7px 12px; border-radius: 11px; cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .tools button:hover { border-color: var(--indigo); color: var(--indigo); transform: translateY(-1px); }
+  .tools button.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
+  .tools button.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
+  .ref {
+    font-family: "Shantell Sans", cursive; font-size: 1.2rem; letter-spacing: 0.06em;
+    color: var(--ink-soft); opacity: 0.7; font-weight: 500;
+  }
   .spacer { flex: 1; }
-  .count { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
-  .count.ok { color: #2e7d32; font-weight: 700; }
-  .bar button { font: inherit; font-weight: 600; font-size: 0.84rem; border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 7px 12px; border-radius: 10px; cursor: pointer; }
-  .bar button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .bar button:disabled { opacity: 0.4; }
+  .count { font-size: 0.85rem; color: var(--ink-soft); white-space: nowrap; }
+  .count.ok { color: oklch(52% 0.13 150); font-weight: 700; }
+  .bar button {
+    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 600; font-size: 0.84rem;
+    border: 1px solid var(--rule); background: var(--paper-deep); color: var(--ink); padding: 7px 12px; border-radius: 11px; cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bar button:not(:disabled):hover { border-color: var(--indigo); color: var(--indigo); transform: translateY(-1px); }
+  .bar button.primary { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
+  .bar button.primary:not(:disabled):hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
+  .bar button:disabled { opacity: 0.4; cursor: default; }
   canvas {
-    display: block; width: calc(100% - 28px); height: 240px; margin: 0 14px; background: #fff;
-    border: 1px solid var(--line); border-radius: 12px; touch-action: none;
+    display: block; width: calc(100% - 2 * clamp(14px, 4vw, 28px)); height: 240px; margin: 0 clamp(14px, 4vw, 28px); background: #fff;
+    border: 1px solid var(--rule); border-radius: 13px; touch-action: none;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }
-  .hint { color: var(--muted); font-size: 0.78rem; max-width: 80ch; padding: 8px 16px 40px; }
+  .hint { color: var(--ink-soft); font-size: 0.82rem; line-height: 1.5; max-width: 80ch; padding: 10px clamp(14px, 4vw, 28px) 40px; }
+  .hint b { color: var(--ink); font-weight: 700; }
 </style>

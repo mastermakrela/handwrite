@@ -125,45 +125,75 @@
 {/if}
 
 <style>
-  :global(:root) { --ink: #1d2347; --accent: #3b3f9e; --line: #e6e9f2; --muted: #7a8499; }
+  :global(:root) {
+    --paper: oklch(97.6% 0.008 95);
+    --paper-deep: oklch(95.4% 0.011 92);
+    --ink: oklch(25% 0.045 270);
+    --ink-soft: oklch(43% 0.04 272);
+    --indigo: oklch(47% 0.15 277);
+    --indigo-bright: oklch(60% 0.17 280);
+    --rule: oklch(47% 0.15 277 / 0.24);
+    --night: oklch(30% 0.085 278);
+    /* legacy aliases used by the canvas components' CSS */
+    --accent: var(--indigo);
+    --line: var(--rule);
+    --muted: var(--ink-soft);
+  }
   :global(html, body) {
-    margin: 0; background: #f6f7fb; color: var(--ink);
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     touch-action: pan-y; -webkit-text-size-adjust: 100%;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
     overscroll-behavior-y: contain;
   }
   header {
     position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: calc(8px + env(safe-area-inset-top)) 14px 8px; background: rgba(246, 247, 251, 0.92);
-    backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+    padding: calc(10px + env(safe-area-inset-top)) clamp(14px, 4vw, 28px) 10px;
+    background: color-mix(in oklch, var(--paper) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule);
   }
-  .logo { font-family: "Snell Roundhand", "Segoe Script", cursive; font-size: 1.5rem; color: var(--accent); text-decoration: none; }
+  .logo {
+    font-family: "Shantell Sans", cursive; font-weight: 600; font-size: 1.6rem;
+    color: var(--indigo); text-decoration: none; letter-spacing: -0.01em; line-height: 1;
+  }
   .profile { display: flex; align-items: center; gap: 4px; }
   .profile select {
-    font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--ink); background: #fff;
-    border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; max-width: 11rem;
+    font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--ink); background: var(--paper-deep);
+    border: 1px solid var(--rule); border-radius: 11px; padding: 7px 10px; max-width: 11rem;
   }
   .profile button { padding: 7px 10px; font-size: 0.85rem; }
   .modes { display: flex; gap: 4px; }
   .modes button { font-size: 0.82rem; padding: 6px 12px; }
-  .modes button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .modes button.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
   .passes { display: flex; align-items: center; gap: 6px; }
-  .passlabel { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+  .passlabel { font-size: 0.85rem; color: var(--ink-soft); white-space: nowrap; }
+  .passlabel b { color: var(--ink); }
   .spacer { flex: 1; }
   button, label.btn {
-    font: inherit; font-weight: 600; font-size: 0.88rem; border: 1px solid var(--line); background: #fff;
-    color: var(--ink); padding: 8px 12px; border-radius: 10px; cursor: pointer;
+    font: inherit; font-weight: 600; font-size: 0.88rem; border: 1px solid var(--rule); background: var(--paper-deep);
+    color: var(--ink); padding: 8px 12px; border-radius: 11px; cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  button:disabled { opacity: 0.4; }
+  button:not(:disabled):hover, label.btn:hover {
+    border-color: var(--indigo); color: var(--indigo); transform: translateY(-1px);
+  }
+  button.primary { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
+  button.primary:not(:disabled):hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
+  .modes button.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
+  button:disabled { opacity: 0.4; cursor: default; }
   label.btn input { display: none; }
-  .sub { padding: 8px 16px 0; display: flex; flex-direction: column; gap: 8px; }
-  .hint { color: var(--muted); font-size: 0.78rem; max-width: 70ch; }
+  .sub { padding: 10px clamp(14px, 4vw, 28px) 0; display: flex; flex-direction: column; gap: 10px; }
+  .hint { color: var(--ink-soft); font-size: 0.82rem; line-height: 1.5; max-width: 70ch; }
+  .hint b { color: var(--ink); font-weight: 700; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip { font-size: 0.78rem; padding: 5px 11px; border-radius: 999px; color: var(--muted); }
-  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; padding: 12px 14px 56px; align-items: start; }
-  .group { grid-column: 1 / -1; color: var(--muted); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; }
+  .chip { font-size: 0.78rem; padding: 5px 12px; border-radius: 999px; color: var(--ink-soft); }
+  .chip:not(:disabled):hover { transform: none; }
+  .chip.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
+  .chip.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; padding: 14px clamp(14px, 4vw, 28px) 56px; align-items: start; }
+  .group { grid-column: 1 / -1; color: var(--indigo); font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; margin-top: 10px; }
   .group:first-child { margin-top: 0; }
 </style>

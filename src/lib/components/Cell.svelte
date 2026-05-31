@@ -43,14 +43,14 @@
     if (!ctx) return;
     ctx.clearRect(0, 0, VIRT, VIRT);
     const px = VIRT / Math.max(1, canvas.getBoundingClientRect().width);
-    ctx.strokeStyle = "#d7def0";
+    ctx.strokeStyle = "#cdd2ee";
     ctx.lineWidth = px;
     ctx.beginPath(); ctx.moveTo(0, BASELINE_FRAC * VIRT); ctx.lineTo(VIRT, BASELINE_FRAC * VIRT); ctx.stroke();
     ctx.setLineDash([4 * px, 4 * px]);
     for (const f of [XHEIGHT_FRAC, CAP_FRAC]) { ctx.beginPath(); ctx.moveTo(0, f * VIRT); ctx.lineTo(VIRT, f * VIRT); ctx.stroke(); }
     ctx.setLineDash([]);
-    if (onion) { ctx.fillStyle = "#c9d2e6"; for (const s of onion) { const p = path(s); if (p) ctx.fill(p); } }
-    ctx.fillStyle = "#1d2347";
+    if (onion) { ctx.fillStyle = "#c1c8ea"; for (const s of onion) { const p = path(s); if (p) ctx.fill(p); } }
+    ctx.fillStyle = "#1b1f3b";
     for (const s of committed) { const p = path(s); if (p) ctx.fill(p); }
     if (active) { const p = path(active); if (p) ctx.fill(p); }
   }
@@ -122,17 +122,27 @@
 
 <style>
   .cell {
-    position: relative; aspect-ratio: 1/1; background: #fff; border: 1px solid var(--line, #e6e9f2);
-    border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(24, 32, 58, 0.04);
+    position: relative; aspect-ratio: 1/1; background: #fff;
+    border: 1px solid var(--rule, oklch(47% 0.15 277 / 0.24));
+    border-radius: 13px; overflow: hidden;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .cell.active { border-color: var(--accent, #3b3f9e); box-shadow: 0 0 0 2px var(--accent, #3b3f9e); }
-  .cell.done { background: #fcfdff; }
+  .cell.active {
+    border-color: var(--indigo, oklch(47% 0.15 277));
+    box-shadow: 0 0 0 2px var(--indigo, oklch(47% 0.15 277));
+  }
+  .cell.done { background: var(--paper-deep, oklch(95.4% 0.011 92)); }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
-  .lbl { position: absolute; top: 4px; left: 7px; font-size: 0.8rem; font-weight: 700; color: #aeb6c9; pointer-events: none; }
-  .clr {
-    position: absolute; top: 2px; right: 2px; padding: 2px 6px; font-size: 0.72rem; line-height: 1;
-    border: none; background: transparent; color: #c3c9d6; cursor: pointer;
+  .lbl {
+    position: absolute; top: 4px; left: 8px; font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: 0.82rem; font-weight: 700; color: var(--indigo, oklch(47% 0.15 277)); opacity: 0.45; pointer-events: none;
   }
-  .clr:active { color: var(--accent, #3b3f9e); }
+  .clr {
+    position: absolute; top: 3px; right: 3px; padding: 2px 6px; font-size: 0.72rem; line-height: 1;
+    border: none; background: transparent; color: var(--ink-soft, oklch(43% 0.04 272)); opacity: 0.6; cursor: pointer;
+    transition: color 0.2s, opacity 0.2s;
+  }
+  .clr:hover { color: var(--indigo, oklch(47% 0.15 277)); opacity: 1; }
+  .clr:active { color: var(--indigo, oklch(47% 0.15 277)); opacity: 1; }
 </style>

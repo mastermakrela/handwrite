@@ -17,7 +17,6 @@
     name="description"
     content="handwrite turns the letters you draw into a real, installable font (.otf), entirely on your device. Write them on an iPad with an Apple Pencil and export a typeface that looks like your hand."
   />
-  <link rel="stylesheet" href="/fonts/fonts.css" />
   <link rel="canonical" href="https://handwrite.app/" />
   <meta property="og:title" content="handwrite — a font that writes like you" />
   <meta property="og:description" content="Turn your handwriting into a real, installable font. On your device, no account, no upload." />
