@@ -43,7 +43,10 @@
   <main>
     <section class="hero">
       <p class="eyebrow r1">A type foundry the size of your hand</p>
-      <h1 class="lined r2">A font that writes like <span class="you">you.</span></h1>
+      <h1 class="hed r2">
+        <span class="line lined">A font that writes like</span>
+        <span class="line lined"><span class="you">you.</span></span>
+      </h1>
       <p class="lede r3">
         handwrite turns the letters you draw into a real, installable font. Write each one on your
         iPad, get back an <code>.otf</code> that looks unmistakably like your hand, ready for any app
@@ -53,7 +56,8 @@
         <a class="cta" href="/app">Open the studio <span aria-hidden="true">→</span></a>
         <a class="ghost" href="#how">How it works <span aria-hidden="true">↓</span></a>
       </div>
-      <p class="fine r5">No account, no upload, no server. Your handwriting never leaves the device.</p>
+      <p class="device r5">Best on an <strong>iPad with an Apple Pencil</strong>. Works in any modern browser.</p>
+      <p class="fine r6">No account, no upload, no server. Your handwriting never leaves the device.</p>
     </section>
 
     <section class="proof">
@@ -137,6 +141,7 @@
         opens full-screen and keeps working with no signal. Paper and pen not included.
       </p>
       <a class="cta" href="/app">Open the studio <span aria-hidden="true">→</span></a>
+      <p class="device">On a laptop? Open it on your iPad with an Apple Pencil for the real thing.</p>
     </section>
   </main>
 
@@ -233,22 +238,37 @@
     color: var(--indigo);
     margin: 0 0 clamp(18px, 3vw, 30px);
   }
-  h1 {
-    font-size: clamp(2.6rem, 9.2vw, 7.2rem);
+  /* headline stacks two ruled lines; each line carries its own baseline rule
+     (via .lined) so the gap between them is controlled and the hand word sits
+     on a writing line instead of floating below one. */
+  .hed {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(6px, 1.1vw, 16px);
+    font-size: clamp(2.6rem, 9vw, 7rem);
     font-weight: 800;
     letter-spacing: -0.03em;
     margin: 0;
     max-width: 16ch;
-    background-position: 0 0.2em;
+  }
+  .hed .line {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    --period: 1.08em; /* hug the rule tight to each line */
+    background-position: 0 0.04em;
   }
   .you {
     font-family: "Shantell Sans", "Bradley Hand", "Comic Sans MS", cursive;
     font-weight: 600;
     font-style: normal;
+    font-size: 0.9em; /* bring the hand word toward the grotesque's cap height */
     color: var(--indigo-bright);
     letter-spacing: 0.01em;
-    padding-right: 0.06em;
+    padding-right: 0.08em;
     display: inline-block;
+    vertical-align: baseline;
   }
   .lede {
     font-size: clamp(1.08rem, 2.2vw, 1.5rem);
@@ -286,11 +306,18 @@
     transition: border-color 0.25s;
   }
   .ghost:hover { border-color: var(--indigo-bright); }
+  .device {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    margin: clamp(18px, 2.6vw, 26px) 0 0;
+  }
+  .device strong { color: var(--ink); font-weight: 700; }
   .fine {
     font-size: 0.92rem;
     color: var(--ink-soft);
-    margin: clamp(24px, 4vw, 40px) 0 0;
+    margin: 0.5em 0 0;
   }
+  .install .device { margin-top: clamp(16px, 2.4vw, 22px); }
 
   /* ---- shared section heads ---- */
   h2 {
@@ -444,9 +471,21 @@
   }
   footer .by a:hover { color: var(--indigo-bright); border-color: var(--indigo-bright); }
 
+  /* ---- wide screens: heading rail + specimen, like a type-specimen sheet ---- */
+  @media (min-width: 900px) {
+    .proof, .how, .charset {
+      display: grid;
+      grid-template-columns: minmax(0, 19rem) 1fr;
+      column-gap: clamp(36px, 5vw, 88px);
+      align-items: start;
+    }
+    /* the specimen/steps column starts level with its heading rail */
+    .pangram, .specimen, .steps { margin-top: 0; }
+  }
+
   /* ---- entrance motion (opt-in; reduced-motion users see final state) ---- */
   @media (prefers-reduced-motion: no-preference) {
-    .hero .r1, .hero .r2, .hero .r3, .hero .r4, .hero .r5 {
+    .hero .r1, .hero .r2, .hero .r3, .hero .r4, .hero .r5, .hero .r6 {
       opacity: 0;
       transform: translateY(16px);
       animation: rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -456,6 +495,7 @@
     .hero .r3 { animation-delay: 0.34s; }
     .hero .r4 { animation-delay: 0.46s; }
     .hero .r5 { animation-delay: 0.56s; }
+    .hero .r6 { animation-delay: 0.64s; }
     .you {
       clip-path: inset(0 100% 0 0);
       animation: write 0.95s 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;

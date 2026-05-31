@@ -27,3 +27,4 @@ venv/
 /MyHandwriting.woff2
 tools/_outlines.json
 handwriting-passes.json
+.impeccable/
