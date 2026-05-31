@@ -141,7 +141,10 @@
     </section>
   </main>
 
-  <footer>drawn by hand, kept on your device</footer>
+  <footer>
+    <span class="note">drawn by hand, kept on your device</span>
+    <span class="by">created by <a href="https://mastermakrela.com/" target="_blank" rel="noopener noreferrer">mastermakrela</a></span>
+  </footer>
 </div>
 
 <style>
@@ -424,10 +427,23 @@
   footer {
     border-top: 1px solid var(--rule);
     padding: 28px clamp(18px, 5vw, 64px) calc(28px + env(safe-area-inset-bottom));
-    font-family: "Shantell Sans", cursive;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 20px;
     color: var(--ink-soft);
-    font-size: 1.05rem;
   }
+  footer .note { font-family: "Shantell Sans", cursive; font-size: 1.05rem; }
+  footer .by { font-size: 0.85rem; }
+  footer .by a {
+    color: var(--indigo);
+    text-decoration: none;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 1px;
+    transition: border-color 0.25s, color 0.25s;
+  }
+  footer .by a:hover { color: var(--indigo-bright); border-color: var(--indigo-bright); }
 
   /* ---- entrance motion (opt-in; reduced-motion users see final state) ---- */
   @media (prefers-reduced-motion: no-preference) {
