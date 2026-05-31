@@ -44,7 +44,7 @@
   <main>
     <section class="hero">
       <p class="eyebrow r1">A type foundry the size of your hand</p>
-      <h1 class="lined r2">A font that writes like <span class="you">you</span>.</h1>
+      <h1 class="lined r2">A font that writes like <span class="you">you.</span></h1>
       <p class="lede r3">
         handwrite turns the letters you draw into a real, installable font. Write each one on your
         iPad, get back an <code>.otf</code> that looks unmistakably like your hand, ready for any app
@@ -218,7 +218,7 @@
 
   /* ---- hero ---- */
   .hero {
-    max-width: 1080px;
+    max-width: 1180px;
     margin: 0 auto;
     padding-top: clamp(40px, 9vw, 120px);
     padding-bottom: clamp(48px, 9vw, 130px);
