@@ -37,14 +37,18 @@ export function assignStrokesToSegments(strokes: Stroke[], dividerXs: number[]):
 }
 
 /**
- * Propose divider x-positions so that strokes split into `targetCount` bands,
- * preferring the widest pen-lift gaps between horizontally-sorted strokes.
- * Returns targetCount-1 x positions (sorted). Pure; does not mutate inputs.
+ * Propose divider x-positions that split the writing into letters at the widest
+ * pen-lift gaps. Multi-stroke letters (the stem + crossbar of "t", the stem +
+ * dot of "i"/"j", the two strokes of "x"/"k") must NOT be split, so overlapping
+ * or near-touching strokes are first merged into per-letter clusters; dividers
+ * are then placed only in the real gaps *between* clusters. Never returns more
+ * dividers than there are between-cluster gaps (so it can't over-segment when
+ * fewer letters were written than `targetCount`). Pure; does not mutate inputs.
  */
 export function proposeDividers(strokes: Stroke[], targetCount: number): number[] {
   if (targetCount <= 1 || strokes.length < 2) return [];
-  // 1. order strokes left→right by centroid
-  const items = strokes
+  // 1. x-extent per stroke, ordered left→right by left edge
+  const ext = strokes
     .map((s) => {
       let min = Infinity,
         max = -Infinity;
@@ -52,15 +56,28 @@ export function proposeDividers(strokes: Stroke[], targetCount: number): number[
         if (p.x < min) min = p.x;
         if (p.x > max) max = p.x;
       }
-      return { min, max, cx: strokeCentroidX(s) };
+      return { min, max };
     })
-    .sort((a, b) => a.cx - b.cx);
-  // 2. gap between consecutive strokes = next.min - prev.max (the pen-lift space)
-  const gaps: { pos: number; size: number; i: number }[] = [];
-  for (let i = 0; i < items.length - 1; i++) {
-    gaps.push({ pos: (items[i].max + items[i + 1].min) / 2, size: items[i + 1].min - items[i].max, i });
+    .sort((a, b) => a.min - b.min);
+
+  // 2. typical inter-stroke gap (median of positive gaps); within-letter strokes
+  //    overlap (gap ≤ 0), so a fraction of this cleanly separates the two cases.
+  const raw: number[] = [];
+  for (let i = 0; i < ext.length - 1; i++) raw.push(ext[i + 1].min - ext[i].max);
+  const positive = raw.filter((g) => g > 0).sort((a, b) => a - b);
+  const median = positive.length ? positive[Math.floor(positive.length / 2)] : 0;
+  const mergeGap = Math.max(median * 0.55, 1);
+
+  // 3. merge overlapping / near-touching strokes into per-letter clusters
+  const clusters: { min: number; max: number }[] = [{ min: ext[0].min, max: ext[0].max }];
+  for (let i = 1; i < ext.length; i++) {
+    const c = clusters[clusters.length - 1];
+    if (ext[i].min - c.max < mergeGap) c.max = Math.max(c.max, ext[i].max);
+    else clusters.push({ min: ext[i].min, max: ext[i].max });
   }
-  // 3. need targetCount-1 dividers; pick the largest gaps, then return sorted by position
+
+  // 4. gaps between clusters; place dividers in the largest, capped at what exists
+  const gaps = clusters.slice(0, -1).map((c, i) => ({ pos: (c.max + clusters[i + 1].min) / 2, size: clusters[i + 1].min - c.max }));
   const need = Math.min(targetCount - 1, gaps.length);
   return gaps
     .slice()

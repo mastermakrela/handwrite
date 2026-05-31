@@ -453,7 +453,7 @@
   }
   canvas {
     display: block; width: max(100%, var(--canvas-w));
-    height: clamp(150px, 24vh, 230px); background: #fff;
+    height: clamp(90px, 13vh, 130px); background: #fff;
     border: 1px solid var(--rule); border-radius: 13px; touch-action: none;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }
