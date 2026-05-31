@@ -24,7 +24,7 @@ export interface BuildOpts {
   fitEpsilon?: number; // RDP tolerance in capture units
   stroke?: StrokeOptions;
 }
-const DEFAULTS = { sideBearing: 38, fitEpsilon: 8, stroke: { size: 46, thinning: 0.55, smoothing: 0.5, streamline: 0.5, simulatePressure: false } };
+const DEFAULTS = { sideBearing: 38, fitEpsilon: 8, stroke: { size: 30, thinning: 0.6, smoothing: 0.5, streamline: 0.5, simulatePressure: false } };
 
 const xs = (cmd: PathCommand): number[] =>
   cmd.type === "M" || cmd.type === "L" ? [cmd.x] : cmd.type === "Q" ? [cmd.x1, cmd.x] : cmd.type === "C" ? [cmd.x1, cmd.x2, cmd.x] : [];

@@ -3,7 +3,7 @@
   import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
   import { assignStrokesToSegments, normalizeSegmentToCell, proposeDividers } from "$lib/handwrite/capture/segment";
   import { PROMPTS, promptChars } from "$lib/handwrite/prompts";
-  import { ui, applySentence, newPass, cap, type Stroke, type Pt } from "$lib/capture.svelte";
+  import { ui, applySentence, newPass, cap, penOptions, type Stroke, type Pt } from "$lib/capture.svelte";
 
   // ---- prompt selection ----
   let promptIdx = $state(0);
@@ -92,10 +92,9 @@
     if (scroller) scrollable = scroller.scrollWidth - scroller.clientWidth > 4;
   }
 
-  const OPTS = { size: 46, thinning: 0.55, smoothing: 0.5, streamline: 0.5, simulatePressure: false };
   function path(s: Stroke): Path2D | null {
     if (s.length === 0) return null;
-    const o = getStroke(s.map((p) => [p.x, p.y, p.pressure ?? 0.5]), OPTS) as number[][];
+    const o = getStroke(s.map((p) => [p.x, p.y, p.pressure ?? 0.5]), penOptions()) as number[][];
     if (o.length < 2) return null;
     const p = new Path2D();
     o.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y)));
@@ -305,7 +304,7 @@
     tool = "write";
   }
   // redraw whenever inputs change
-  $effect(() => { strokes; dividers; target; redraw(); });
+  $effect(() => { strokes; dividers; target; cap.pen.size; cap.pen.thinning; redraw(); });
   $effect(() => {
     fit();
     const ro = new ResizeObserver(() => { fit(); checkScrollable(); });
@@ -454,7 +453,7 @@
   }
   canvas {
     display: block; width: max(100%, var(--canvas-w));
-    height: clamp(260px, 44vh, 480px); background: #fff;
+    height: clamp(150px, 24vh, 230px); background: #fff;
     border: 1px solid var(--rule); border-radius: 13px; touch-action: none;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }

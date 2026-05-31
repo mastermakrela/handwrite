@@ -12,20 +12,23 @@
  */
 import type { CharDef } from "$lib/handwrite/charsets";
 import type { Pass } from "$lib/capture.svelte";
-import { glyphsFromPasses } from "./glyph-from-passes";
+import { glyphsFromPasses, type BuildOpts } from "./glyph-from-passes";
 import { buildFont, fontToUint8Array } from "./opentype-builder";
 import { DEFAULT_METRICS, type GlyphDef } from "../types";
 
 export const PREVIEW_FAMILY = "MyHandwritingPreview";
+export type PenStroke = BuildOpts["stroke"];
 
 /** Build the GlyphDefs (with alternates) for the given chars from all passes. */
-export function buildGlyphs(passes: Pass[], chars: CharDef[]): GlyphDef[] {
-  return glyphsFromPasses(passes, chars);
+export function buildGlyphs(passes: Pass[], chars: CharDef[], stroke?: PenStroke): GlyphDef[] {
+  return glyphsFromPasses(passes, chars, stroke ? { stroke } : {});
 }
 
 export interface BuildBytesOptions {
   familyName?: string;
   styleName?: string;
+  /** nib options (size/thinning/…); keeps the built font matching the on-screen ink */
+  stroke?: PenStroke;
 }
 
 /**
@@ -37,7 +40,7 @@ export function buildFontBytes(
   chars: CharDef[],
   opts: BuildBytesOptions = {},
 ): { glyphs: GlyphDef[]; bytes: Uint8Array } {
-  const glyphs = buildGlyphs(passes, chars);
+  const glyphs = buildGlyphs(passes, chars, opts.stroke);
   const font = buildFont({
     familyName: opts.familyName ?? "My Handwriting",
     styleName: opts.styleName ?? "Regular",

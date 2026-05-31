@@ -7,7 +7,7 @@
   import FirstRunOverlay from "$lib/components/FirstRunOverlay.svelte";
   import { CHAR_GROUPS } from "$lib/handwrite/charsets";
   import {
-    cap, load, save, chars, importPasses, roundsDone,
+    cap, load, save, chars, importPasses, roundsDone, penOptions,
   } from "$lib/capture.svelte";
   import {
     buildFontBytes, registerPreviewFace, disposePreviewFace, PREVIEW_FAMILY, type PreviewFace,
@@ -29,7 +29,7 @@
   let sampleText = $state("the quick brown fox");
 
   // signature that changes whenever stroke data changes (E.5)
-  const sig = $derived(JSON.stringify(cap.passes.map((p) => Object.keys(p).sort())) + ":" + roundsDone());
+  const sig = $derived(JSON.stringify(cap.passes.map((p) => Object.keys(p).sort())) + ":" + roundsDone() + ":" + cap.pen.size + ":" + cap.pen.thinning);
 
   let rebuildScheduled = false;
   async function rebuild() {
@@ -37,7 +37,7 @@
     building = true;
     try {
       const charDefs = chars();
-      const { glyphs, bytes } = buildFontBytes(cap.passes, charDefs, { familyName: "My Handwriting" });
+      const { glyphs, bytes } = buildFontBytes(cap.passes, charDefs, { familyName: "My Handwriting", stroke: penOptions() });
       glyphChars = new Set(glyphs.map((g) => g.char));
       if (bytes.length) {
         prev = await registerPreviewFace(bytes, prev, PREVIEW_FAMILY);
@@ -73,7 +73,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   function exportOtf() {
-    const { glyphs, bytes } = buildFontBytes(cap.passes, chars(), { familyName: "My Handwriting" });
+    const { glyphs, bytes } = buildFontBytes(cap.passes, chars(), { familyName: "My Handwriting", stroke: penOptions() });
     if (!glyphs.length) return alert("Draw at least one character first.");
     download("MyHandwriting.otf", new Blob([bytes as unknown as BlobPart], { type: "font/otf" }));
   }

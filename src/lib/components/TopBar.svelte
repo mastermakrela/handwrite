@@ -1,7 +1,7 @@
 <script lang="ts">
   import { cap, gotoPass, doneInPass, chars, profiles } from "$lib/capture.svelte";
 
-  let { onOpenProfiles }: { onOpenProfiles: () => void } = $props();
+  let { onOpenProfiles, onOpenPen }: { onOpenProfiles: () => void; onOpenPen?: () => void } = $props();
 
   const total = $derived(Math.max(cap.target, cap.passes.length));
   const totalChars = $derived(chars().length);
@@ -35,6 +35,13 @@
   </div>
 
   <span class="spacer"></span>
+
+  {#if onOpenPen}
+    <button class="pen-trigger" onclick={onOpenPen} aria-haspopup="dialog" aria-label="Pen settings" title="Pen">
+      <span aria-hidden="true">✎</span>
+      <span class="pen-label">Pen</span>
+    </button>
+  {/if}
 
   <button class="profile-trigger" onclick={onOpenProfiles} aria-haspopup="dialog" aria-label="Profiles">
     <span class="pname">{activeName}</span>
@@ -126,7 +133,7 @@
   .dot:disabled {
     cursor: default;
   }
-  .profile-trigger {
+  .profile-trigger, .pen-trigger {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -142,9 +149,13 @@
     cursor: pointer;
     transition: border-color 0.2s, color 0.2s;
   }
-  .profile-trigger:hover {
+  .pen-trigger { margin-right: 8px; }
+  .profile-trigger:hover, .pen-trigger:hover {
     border-color: var(--indigo);
     color: var(--indigo);
+  }
+  @media (max-width: 560px) {
+    .pen-label { display: none; }
   }
   .pname {
     max-width: 11rem;

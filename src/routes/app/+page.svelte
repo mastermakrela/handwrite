@@ -5,6 +5,7 @@
   import BottomNav from "$lib/components/BottomNav.svelte";
   import TopBar from "$lib/components/TopBar.svelte";
   import ProfileSheet from "$lib/components/ProfileSheet.svelte";
+  import PenSheet from "$lib/components/PenSheet.svelte";
   import FirstRunOverlay from "$lib/components/FirstRunOverlay.svelte";
   import { CHAR_GROUPS } from "$lib/handwrite/charsets";
   import { cap, load, save, newPass, toggleGroup, doneInPass, chars } from "$lib/capture.svelte";
@@ -16,6 +17,7 @@
   const lowerGroup = $derived(CHAR_GROUPS.find((g) => g.id === "lower"));
 
   let showProfiles = $state(false);
+  let showPen = $state(false);
   let showIntro = $state(false);
   let showMoreChars = $state(false);
 
@@ -56,7 +58,7 @@
   });
 </script>
 
-<TopBar onOpenProfiles={() => (showProfiles = true)} />
+<TopBar onOpenProfiles={() => (showProfiles = true)} onOpenPen={() => (showPen = true)} />
 
 {#if cap.mode === "sentence"}
   <SentenceCanvas />
@@ -106,6 +108,10 @@
 
 {#if showProfiles}
   <ProfileSheet onClose={() => (showProfiles = false)} onShowIntro={reopenIntro} />
+{/if}
+
+{#if showPen}
+  <PenSheet onClose={() => (showPen = false)} />
 {/if}
 
 {#if showIntro}

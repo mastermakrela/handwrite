@@ -21,13 +21,23 @@ const dataKey = (id: string) => `handwrite.capture.v2.${id}`;
 const newId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now().toString(36) + Math.random().toString(36).slice(2);
 
+/** perfect-freehand nib settings, shared by on-screen rendering and the font build. */
+export type Pen = { size: number; thinning: number };
+export const DEFAULT_PEN: Pen = { size: 30, thinning: 0.6 };
+
 export const cap = $state({
   passes: [{}] as Pass[],
   activePass: 0,
   enabled: ["lower", "upper", "digits", "punct"] as string[],
   target: 3,
   mode: "sentence" as "grid" | "sentence",
+  pen: { ...DEFAULT_PEN } as Pen,
 });
+
+/** Full perfect-freehand options derived from the current pen (one source of truth). */
+export function penOptions() {
+  return { size: cap.pen.size, thinning: cap.pen.thinning, smoothing: 0.5, streamline: 0.5, simulatePressure: false };
+}
 
 /** transient UI state (not persisted) */
 export const ui = $state({ penSeen: false, activeChar: null as string | null, importTick: 0 });
@@ -39,7 +49,7 @@ export function chars(): CharDef[] {
   return activeChars(new Set(cap.enabled));
 }
 
-type Snapshot = { passes: Pass[]; activePass: number; enabled: string[]; target: number; mode: "grid" | "sentence" };
+type Snapshot = { passes: Pass[]; activePass: number; enabled: string[]; target: number; mode: "grid" | "sentence"; pen: Pen };
 
 /** Load a stored snapshot (or sensible defaults) into the active `cap` state. */
 function applyToCap(s: Partial<Snapshot> | null) {
@@ -47,6 +57,7 @@ function applyToCap(s: Partial<Snapshot> | null) {
   cap.activePass = Math.min(s?.activePass ?? 0, cap.passes.length - 1);
   cap.enabled = s?.enabled ?? ["lower", "upper", "digits", "punct"];
   cap.target = s?.target ?? 3;
+  cap.pen = { ...DEFAULT_PEN, ...(s?.pen ?? {}) };
   // Default opening view is Write (sentence). Existing profiles persist a mode and
   // keep it; only new/blank snapshots (no stored mode) fall back to sentence.
   cap.mode = s?.mode === "grid" ? "grid" : "sentence";
@@ -86,7 +97,7 @@ export function save() {
   if (!profiles.activeId) return;
   localStorage.setItem(
     dataKey(profiles.activeId),
-    JSON.stringify({ passes: cap.passes, activePass: cap.activePass, enabled: cap.enabled, target: cap.target, mode: cap.mode }),
+    JSON.stringify({ passes: cap.passes, activePass: cap.activePass, enabled: cap.enabled, target: cap.target, mode: cap.mode, pen: cap.pen }),
   );
   saveRegistry();
 }

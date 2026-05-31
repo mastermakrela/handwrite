@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getStroke } from "perfect-freehand";
   import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
-  import { cap, ui, getStrokes, setStrokes, onionStrokes, type Stroke, type Pt } from "$lib/capture.svelte";
+  import { cap, ui, getStrokes, setStrokes, onionStrokes, penOptions, type Stroke, type Pt } from "$lib/capture.svelte";
 
   let { char }: { char: string } = $props();
 
@@ -15,10 +15,9 @@
   const committed = $derived(getStrokes(char));
   const onion = $derived(onionStrokes(char));
 
-  const OPTS = { size: 46, thinning: 0.55, smoothing: 0.5, streamline: 0.5, simulatePressure: false };
   function path(s: Stroke): Path2D | null {
     if (s.length === 0) return null;
-    const o = getStroke(s.map((p) => [p.x, p.y, p.pressure ?? 0.5]), OPTS) as number[][];
+    const o = getStroke(s.map((p) => [p.x, p.y, p.pressure ?? 0.5]), penOptions()) as number[][];
     if (o.length < 2) return null;
     const p = new Path2D();
     o.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y)));
@@ -97,7 +96,7 @@
   // reset the in-progress stroke when the pass changes / data is imported
   $effect(() => { cap.activePass; ui.importTick; active = null; activeId = null; });
   // redraw whenever committed strokes or the onion-skin change
-  $effect(() => { committed; onion; redraw(); });
+  $effect(() => { committed; onion; cap.pen.size; cap.pen.thinning; redraw(); });
   // size to the element
   $effect(() => {
     fit();
