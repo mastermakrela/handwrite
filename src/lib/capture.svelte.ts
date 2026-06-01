@@ -19,7 +19,9 @@ const REG_KEY = "handwrite.profiles.v1";
 const LEGACY_KEY = "handwrite.capture.v2";
 const dataKey = (id: string) => `handwrite.capture.v2.${id}`;
 const newId = () =>
-  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now().toString(36) + Math.random().toString(36).slice(2);
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : "p" + Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 /** perfect-freehand nib settings, used for the on-screen ink while writing. */
 export type Pen = { size: number; thinning: number };
@@ -51,7 +53,12 @@ export function penOptions() {
 export function fontBuildOptions() {
   return {
     sideBearing: cap.font.spacing,
-    stroke: { ...FREEHAND_BASE, size: cap.font.weight, thinning: cap.pen.thinning, smoothing: cap.font.smoothing },
+    stroke: {
+      ...FREEHAND_BASE,
+      size: cap.font.weight,
+      thinning: cap.pen.thinning,
+      smoothing: cap.font.smoothing,
+    },
   };
 }
 
@@ -65,7 +72,15 @@ export function chars(): CharDef[] {
   return activeChars(new Set(cap.enabled));
 }
 
-type Snapshot = { passes: Pass[]; activePass: number; enabled: string[]; target: number; mode: "grid" | "sentence"; pen: Pen; font: FontTune };
+type Snapshot = {
+  passes: Pass[];
+  activePass: number;
+  enabled: string[];
+  target: number;
+  mode: "grid" | "sentence";
+  pen: Pen;
+  font: FontTune;
+};
 
 /** Load a stored snapshot (or sensible defaults) into the active `cap` state. */
 function applyToCap(s: Partial<Snapshot> | null) {
@@ -73,19 +88,25 @@ function applyToCap(s: Partial<Snapshot> | null) {
   cap.activePass = Math.min(s?.activePass ?? 0, cap.passes.length - 1);
   cap.enabled = s?.enabled ?? ["lower", "upper", "digits", "punct"];
   cap.target = s?.target ?? 3;
-  cap.pen = { ...DEFAULT_PEN, ...(s?.pen ?? {}) };
-  cap.font = { ...DEFAULT_FONT, ...(s?.font ?? {}) };
+  cap.pen = { ...DEFAULT_PEN, ...s?.pen };
+  cap.font = { ...DEFAULT_FONT, ...s?.font };
   // Default opening view is Write (sentence). Existing profiles persist a mode and
   // keep it; only new/blank snapshots (no stored mode) fall back to sentence.
   cap.mode = s?.mode === "grid" ? "grid" : "sentence";
   ui.importTick++; // force any in-progress stroke on every canvas to reset
 }
 function loadActiveData() {
-  try { applyToCap(JSON.parse(localStorage.getItem(dataKey(profiles.activeId)) || "null")); }
-  catch { applyToCap(null); }
+  try {
+    applyToCap(JSON.parse(localStorage.getItem(dataKey(profiles.activeId)) || "null"));
+  } catch {
+    applyToCap(null);
+  }
 }
 function saveRegistry() {
-  localStorage.setItem(REG_KEY, JSON.stringify({ activeId: profiles.activeId, list: profiles.list }));
+  localStorage.setItem(
+    REG_KEY,
+    JSON.stringify({ activeId: profiles.activeId, list: profiles.list }),
+  );
 }
 
 export function load() {
@@ -93,15 +114,22 @@ export function load() {
     const reg = JSON.parse(localStorage.getItem(REG_KEY) || "null");
     if (reg?.list?.length) {
       // gentle rename of the old auto-seeded "Default" profile to "you"
-      profiles.list = reg.list.map((p: Profile) => (p.name === "Default" ? { ...p, name: "you" } : p));
-      profiles.activeId = profiles.list.some((p) => p.id === reg.activeId) ? reg.activeId : profiles.list[0].id;
+      profiles.list = reg.list.map((p: Profile) =>
+        p.name === "Default" ? { ...p, name: "you" } : p,
+      );
+      profiles.activeId = profiles.list.some((p) => p.id === reg.activeId)
+        ? reg.activeId
+        : profiles.list[0].id;
       if (profiles.list.some((p, i) => reg.list[i]?.name !== p.name)) saveRegistry();
     } else {
       // first run — seed "you" (active, gets any migrated data) plus an example
       // second persona so the profile switcher is self-explanatory.
       const youId = newId();
       const friendId = newId();
-      profiles.list = [{ id: youId, name: "you" }, { id: friendId, name: "your friend" }];
+      profiles.list = [
+        { id: youId, name: "you" },
+        { id: friendId, name: "your friend" },
+      ];
       profiles.activeId = youId;
       const legacy = localStorage.getItem(LEGACY_KEY);
       if (legacy) localStorage.setItem(dataKey(youId), legacy); // (LEGACY_KEY stays as an extra backup)
@@ -114,7 +142,15 @@ export function save() {
   if (!profiles.activeId) return;
   localStorage.setItem(
     dataKey(profiles.activeId),
-    JSON.stringify({ passes: cap.passes, activePass: cap.activePass, enabled: cap.enabled, target: cap.target, mode: cap.mode, pen: cap.pen, font: cap.font }),
+    JSON.stringify({
+      passes: cap.passes,
+      activePass: cap.activePass,
+      enabled: cap.enabled,
+      target: cap.target,
+      mode: cap.mode,
+      pen: cap.pen,
+      font: cap.font,
+    }),
   );
   saveRegistry();
 }
@@ -204,7 +240,9 @@ export function doneInPass(i: number): number {
   return chars().filter((c) => p[c.char]?.length).length;
 }
 export function toggleGroup(id: string) {
-  cap.enabled = cap.enabled.includes(id) ? cap.enabled.filter((x) => x !== id) : [...cap.enabled, id];
+  cap.enabled = cap.enabled.includes(id)
+    ? cap.enabled.filter((x) => x !== id)
+    : [...cap.enabled, id];
   save();
 }
 export function importPasses(passes: Pass[]) {

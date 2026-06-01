@@ -60,7 +60,11 @@ export function simplifyRing(ring: Pt[], epsilon: number): Pt[] {
   // Treat as a loop: run RDP on the open chain p0..pn..p0, then drop the dup.
   const closed = ring.concat([ring[0]]);
   const simplified = rdp(closed, epsilon);
-  if (simplified.length > 1 && simplified[0][0] === simplified[simplified.length - 1][0] && simplified[0][1] === simplified[simplified.length - 1][1]) {
+  if (
+    simplified.length > 1 &&
+    simplified[0][0] === simplified[simplified.length - 1][0] &&
+    simplified[0][1] === simplified[simplified.length - 1][1]
+  ) {
     simplified.pop();
   }
   return simplified;

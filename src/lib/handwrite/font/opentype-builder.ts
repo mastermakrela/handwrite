@@ -53,13 +53,14 @@ export function outlineToPath(outline: GlyphOutline): opentype.Path {
  * All alternates share `def.advanceWidth` so cycling them doesn't jitter spacing.
  */
 function makeGlyphs(def: GlyphDef): opentype.Glyph[] {
-  return def.alternates.map((outline, k) =>
-    new opentype.Glyph({
-      name: k === 0 ? def.name : `${def.name}.alt${k}`,
-      unicode: k === 0 ? def.codepoint : undefined,
-      advanceWidth: def.advanceWidth,
-      path: outlineToPath(outline ?? []),
-    }),
+  return def.alternates.map(
+    (outline, k) =>
+      new opentype.Glyph({
+        name: k === 0 ? def.name : `${def.name}.alt${k}`,
+        unicode: k === 0 ? def.codepoint : undefined,
+        advanceWidth: def.advanceWidth,
+        path: outlineToPath(outline ?? []),
+      }),
   );
 }
 
@@ -131,7 +132,9 @@ function attachCaltGsub(font: opentype.Font, defs: GlyphDef[]): void {
     lookups.push({
       lookupType: 1,
       lookupFlag: 0,
-      subtables: [{ substFormat: 2, coverage: { format: 1, glyphs: [fromGid] }, substitute: [toGid] }],
+      subtables: [
+        { substFormat: 2, coverage: { format: 1, glyphs: [fromGid] }, substitute: [toGid] },
+      ],
     });
     return idx;
   };
@@ -189,7 +192,9 @@ function attachCaltGsub(font: opentype.Font, defs: GlyphDef[]): void {
       { tag: "DFLT", script: { defaultLangSys, langSysRecords: [] } },
       { tag: "latn", script: { defaultLangSys, langSysRecords: [] } },
     ],
-    features: [{ tag: "calt", feature: { featureParams: 0, lookupListIndexes: caltLookupIndexes } }],
+    features: [
+      { tag: "calt", feature: { featureParams: 0, lookupListIndexes: caltLookupIndexes } },
+    ],
     lookups,
   };
 }

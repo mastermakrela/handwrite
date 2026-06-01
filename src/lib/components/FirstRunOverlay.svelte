@@ -17,16 +17,16 @@
     <h2 id="firstrun-title">Your handwriting, turned into a font</h2>
     <ol class="steps">
       <li>
-        <b>Step 1 — Write the sentence.</b> Use your Apple Pencil to write the phrase on the line, in your normal
-        handwriting. (Rest your palm freely — only the Pencil draws.)
+        <b>Step 1 — Write the sentence.</b> Use your Apple Pencil to write the phrase on the line, in
+        your normal handwriting. (Rest your palm freely — only the Pencil draws.)
       </li>
       <li>
-        <b>Step 2 — Add another round.</b> When you're done, tap "Add another round" and write the same phrase again.
-        Each round makes your letters look more natural.
+        <b>Step 2 — Add another round.</b> When you're done, tap "Add another round" and write the same
+        phrase again. Each round makes your letters look more natural.
       </li>
       <li>
-        <b>Step 3 — See your font.</b> After 3 rounds, open Preview to see your handwriting as a real font — and
-        download it.
+        <b>Step 3 — See your font.</b> After 3 rounds, open Preview to see your handwriting as a real
+        font — and download it.
       </li>
     </ol>
     <div class="actions">
@@ -104,7 +104,9 @@
     border-radius: 13px;
     font-size: 1.02rem;
     padding: 13px 24px;
-    transition: background 0.25s, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      background 0.25s,
+      transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .primary:hover {
     background: var(--indigo-bright);
@@ -119,7 +121,9 @@
     border-bottom: 2px solid var(--rule);
     padding: 0 0 2px;
     border-radius: 0;
-    transition: color 0.2s, border-color 0.2s;
+    transition:
+      color 0.2s,
+      border-color 0.2s;
   }
   .skip:hover {
     color: var(--indigo-bright);

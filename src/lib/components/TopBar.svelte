@@ -10,7 +10,9 @@
   const total = $derived(Math.max(cap.target, cap.passes.length));
   const done = $derived(roundsDone());
   const totalChars = $derived(chars().length);
-  const activeName = $derived(profiles.list.find((p) => p.id === profiles.activeId)?.name ?? "Profile");
+  const activeName = $derived(
+    profiles.list.find((p) => p.id === profiles.activeId)?.name ?? "Profile",
+  );
 
   function hasContent(i: number): boolean {
     const p = cap.passes[i];
@@ -40,8 +42,12 @@
             class:current={i === cap.activePass}
             disabled={!real}
             onclick={() => real && gotoPass(i)}
-            aria-label={real ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters` : `Round ${i + 1}, not started`}
-            title={real ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters` : `Round ${i + 1}`}
+            aria-label={real
+              ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters`
+              : `Round ${i + 1}, not started`}
+            title={real
+              ? `Round ${i + 1}, ${doneInPass(i)}/${totalChars} letters`
+              : `Round ${i + 1}`}
           ></button>
         {/each}
       </div>
@@ -51,13 +57,24 @@
   <span class="spacer"></span>
 
   {#if onOpenPen}
-    <button class="pen-trigger" onclick={onOpenPen} aria-haspopup="dialog" aria-label="Pen settings" title="Pen">
+    <button
+      class="pen-trigger"
+      onclick={onOpenPen}
+      aria-haspopup="dialog"
+      aria-label="Pen settings"
+      title="Pen"
+    >
       <span aria-hidden="true">✎</span>
       <span class="pen-label">Pen</span>
     </button>
   {/if}
 
-  <button class="profile-trigger" onclick={onOpenProfiles} aria-haspopup="dialog" aria-label="Profiles">
+  <button
+    class="profile-trigger"
+    onclick={onOpenProfiles}
+    aria-haspopup="dialog"
+    aria-label="Profiles"
+  >
     <span class="pname">{activeName}</span>
     <span class="chev" aria-hidden="true">▾</span>
   </button>
@@ -88,7 +105,8 @@
   .spacer {
     flex: 1;
   }
-  .meter, .summary {
+  .meter,
+  .summary {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -98,7 +116,9 @@
     transform: translateX(-50%);
     top: calc(8px + env(safe-area-inset-top));
   }
-  .summary { gap: 2px; }
+  .summary {
+    gap: 2px;
+  }
   .summary .meter-text {
     font-family: "Shantell Sans", cursive;
     font-weight: 600;
@@ -144,13 +164,18 @@
     border-radius: 999px;
     border: 1.5px solid var(--indigo);
     background: transparent;
-    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    transition:
+      background 0.2s,
+      transform 0.2s,
+      box-shadow 0.2s;
   }
   .dot.filled::before {
     background: var(--indigo);
   }
   .dot.current::before {
-    box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--indigo);
+    box-shadow:
+      0 0 0 2px var(--paper),
+      0 0 0 3.5px var(--indigo);
     transform: scale(1.05);
   }
   .dot:disabled::before {
@@ -160,7 +185,8 @@
   .dot:disabled {
     cursor: default;
   }
-  .profile-trigger, .pen-trigger {
+  .profile-trigger,
+  .pen-trigger {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -174,15 +200,22 @@
     border-radius: 11px;
     padding: 8px 12px;
     cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
+    transition:
+      border-color 0.2s,
+      color 0.2s;
   }
-  .pen-trigger { margin-right: 8px; }
-  .profile-trigger:hover, .pen-trigger:hover {
+  .pen-trigger {
+    margin-right: 8px;
+  }
+  .profile-trigger:hover,
+  .pen-trigger:hover {
     border-color: var(--indigo);
     color: var(--indigo);
   }
   @media (max-width: 560px) {
-    .pen-label { display: none; }
+    .pen-label {
+      display: none;
+    }
   }
   .pname {
     max-width: 11rem;

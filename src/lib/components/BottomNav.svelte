@@ -25,11 +25,21 @@
 </script>
 
 <nav class="bottomnav" aria-label="Views">
-  <button class="navitem" class:on={activeMode === "sentence"} onclick={goWrite} aria-current={activeMode === "sentence" ? "page" : undefined}>
+  <button
+    class="navitem"
+    class:on={activeMode === "sentence"}
+    onclick={goWrite}
+    aria-current={activeMode === "sentence" ? "page" : undefined}
+  >
     <span class="glyph" aria-hidden="true">✎</span>
     <span class="label">Write</span>
   </button>
-  <button class="navitem" class:on={activeMode === "grid"} onclick={goGrid} aria-current={activeMode === "grid" ? "page" : undefined}>
+  <button
+    class="navitem"
+    class:on={activeMode === "grid"}
+    onclick={goGrid}
+    aria-current={activeMode === "grid" ? "page" : undefined}
+  >
     <span class="glyph" aria-hidden="true">▦</span>
     <span class="label">Grid</span>
   </button>
@@ -78,7 +88,9 @@
     font-weight: 600;
     cursor: pointer;
     padding: 6px 8px;
-    transition: background 0.2s, color 0.2s;
+    transition:
+      background 0.2s,
+      color 0.2s;
   }
   /* Only honour hover on devices that truly hover, so the highlight does not
      "stick" on a touch tab after tapping it on iPad/phone. */

@@ -22,7 +22,12 @@ export function promptChars(text: string): string[] {
   return [...text.trim().replace(/\s+/g, " ")];
 }
 
-const p = (id: string, group: string, text: string): Prompt => ({ id, group, text, chars: promptChars(text) });
+const p = (id: string, group: string, text: string): Prompt => ({
+  id,
+  group,
+  text,
+  chars: promptChars(text),
+});
 
 export const PROMPTS: Prompt[] = [
   // full pangram (default phrase) — the round model writes this whole line each round

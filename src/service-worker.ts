@@ -14,7 +14,12 @@ const CACHE = `handwrite-${version}`;
 const PRECACHE = [...build, ...files];
 
 sw.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => sw.skipWaiting()));
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(PRECACHE))
+      .then(() => sw.skipWaiting()),
+  );
 });
 
 sw.addEventListener("activate", (event) => {

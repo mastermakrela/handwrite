@@ -2,6 +2,7 @@ node_modules/
 .svelte-kit/
 build/
 dist/
+.wrangler/
 *.log
 
 # Generated fonts from proofs (keep the scripts, not the binaries)

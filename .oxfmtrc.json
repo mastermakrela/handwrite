@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "svelte": true,
+  "ignorePatterns": [
+    "app/",
+    "proofs/",
+    "tools/",
+    "docs/",
+    "static/",
+    "README.md",
+    "wrangler.jsonc",
+    "handwriting-strokes.json"
+  ]
+}

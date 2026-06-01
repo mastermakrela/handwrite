@@ -24,14 +24,28 @@ export interface BuildOpts {
   fitEpsilon?: number; // RDP tolerance in capture units
   stroke?: StrokeOptions;
 }
-const DEFAULTS = { sideBearing: 38, fitEpsilon: 8, stroke: { size: 30, thinning: 0.6, smoothing: 0.5, streamline: 0.5, simulatePressure: false } };
+const DEFAULTS = {
+  sideBearing: 38,
+  fitEpsilon: 8,
+  stroke: { size: 30, thinning: 0.6, smoothing: 0.5, streamline: 0.5, simulatePressure: false },
+};
 
 const xs = (cmd: PathCommand): number[] =>
-  cmd.type === "M" || cmd.type === "L" ? [cmd.x] : cmd.type === "Q" ? [cmd.x1, cmd.x] : cmd.type === "C" ? [cmd.x1, cmd.x2, cmd.x] : [];
+  cmd.type === "M" || cmd.type === "L"
+    ? [cmd.x]
+    : cmd.type === "Q"
+      ? [cmd.x1, cmd.x]
+      : cmd.type === "C"
+        ? [cmd.x1, cmd.x2, cmd.x]
+        : [];
 const shiftX = (cmd: PathCommand, dx: number): PathCommand =>
-  cmd.type === "M" || cmd.type === "L" ? { ...cmd, x: cmd.x + dx }
-  : cmd.type === "Q" ? { ...cmd, x1: cmd.x1 + dx, x: cmd.x + dx }
-  : cmd.type === "C" ? { ...cmd, x1: cmd.x1 + dx, x2: cmd.x2 + dx, x: cmd.x + dx } : cmd;
+  cmd.type === "M" || cmd.type === "L"
+    ? { ...cmd, x: cmd.x + dx }
+    : cmd.type === "Q"
+      ? { ...cmd, x1: cmd.x1 + dx, x: cmd.x + dx }
+      : cmd.type === "C"
+        ? { ...cmd, x1: cmd.x1 + dx, x2: cmd.x2 + dx, x: cmd.x + dx }
+        : cmd;
 
 /** One captured rendition (its strokes) -> a font-space outline (not yet x-normalized). */
 function normalizeStrokes(strokes: InputPoint[][], opts: Required<BuildOpts>): GlyphOutline {
@@ -48,7 +62,9 @@ function normalizeStrokes(strokes: InputPoint[][], opts: Required<BuildOpts>): G
       const s = toFont(fitted.start);
       out.push({ type: "M", x: s.x, y: s.y });
       for (const seg of fitted.segs) {
-        const c1 = toFont(seg.c1), c2 = toFont(seg.c2), e = toFont(seg.end);
+        const c1 = toFont(seg.c1),
+          c2 = toFont(seg.c2),
+          e = toFont(seg.end);
         out.push({ type: "C", x1: c1.x, y1: c1.y, x2: c2.x, y2: c2.y, x: e.x, y: e.y });
       }
       out.push({ type: "Z" });
@@ -63,8 +79,16 @@ function bounds(o: GlyphOutline) {
 }
 
 /** Build glyph definitions (with alternates) for the given chars from all passes. */
-export function glyphsFromPasses(passes: Pass[], chars: CharDef[], options: BuildOpts = {}): GlyphDef[] {
-  const opts = { ...DEFAULTS, ...options, stroke: { ...DEFAULTS.stroke, ...(options.stroke ?? {}) } } as Required<BuildOpts>;
+export function glyphsFromPasses(
+  passes: Pass[],
+  chars: CharDef[],
+  options: BuildOpts = {},
+): GlyphDef[] {
+  const opts = {
+    ...DEFAULTS,
+    ...options,
+    stroke: { ...DEFAULTS.stroke, ...options.stroke },
+  } as Required<BuildOpts>;
   const glyphs: GlyphDef[] = [];
 
   for (const cd of chars) {
@@ -80,12 +104,23 @@ export function glyphsFromPasses(passes: Pass[], chars: CharDef[], options: Buil
     if (!raw.length) continue;
 
     // common advance = widest ink + 2*bearing; left-align each alternate at bearing
-    const inks = raw.map((o) => { const b = bounds(o); return { o, b, w: b.max - b.min }; });
+    const inks = raw.map((o) => {
+      const b = bounds(o);
+      return { o, b, w: b.max - b.min };
+    });
     const maxW = Math.max(...inks.map((i) => i.w));
     const advanceWidth = Math.round(maxW + 2 * opts.sideBearing);
-    const alternates = inks.map(({ o, b }) => o.map((cmd) => shiftX(cmd, opts.sideBearing - b.min)));
+    const alternates = inks.map(({ o, b }) =>
+      o.map((cmd) => shiftX(cmd, opts.sideBearing - b.min)),
+    );
 
-    glyphs.push({ char: cd.char, codepoint: cd.codepoint, name: cd.name, advanceWidth, alternates });
+    glyphs.push({
+      char: cd.char,
+      codepoint: cd.codepoint,
+      name: cd.name,
+      advanceWidth,
+      alternates,
+    });
   }
   return glyphs;
 }
