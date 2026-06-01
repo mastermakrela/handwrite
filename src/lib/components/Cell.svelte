@@ -1,7 +1,16 @@
 <script lang="ts">
   import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
   import { strokePath as path } from "$lib/handwrite/capture/stroke-path";
-  import { cap, ui, getStrokes, setStrokes, onionStrokes, type Stroke, type Pt } from "$lib/capture.svelte";
+  import { canvasInk } from "$lib/theme.svelte";
+  import {
+    cap,
+    ui,
+    getStrokes,
+    setStrokes,
+    onionStrokes,
+    type Stroke,
+    type Pt,
+  } from "$lib/capture.svelte";
 
   let { char }: { char: string } = $props();
 
@@ -31,22 +40,47 @@
   function redraw() {
     if (!ctx) return;
     ctx.clearRect(0, 0, VIRT, VIRT);
+    const ink = canvasInk();
     const px = VIRT / Math.max(1, canvas.getBoundingClientRect().width);
-    ctx.strokeStyle = "#cdd2ee";
+    ctx.strokeStyle = ink.guide;
     ctx.lineWidth = px;
-    ctx.beginPath(); ctx.moveTo(0, BASELINE_FRAC * VIRT); ctx.lineTo(VIRT, BASELINE_FRAC * VIRT); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, BASELINE_FRAC * VIRT);
+    ctx.lineTo(VIRT, BASELINE_FRAC * VIRT);
+    ctx.stroke();
     ctx.setLineDash([4 * px, 4 * px]);
-    for (const f of [XHEIGHT_FRAC, CAP_FRAC]) { ctx.beginPath(); ctx.moveTo(0, f * VIRT); ctx.lineTo(VIRT, f * VIRT); ctx.stroke(); }
+    for (const f of [XHEIGHT_FRAC, CAP_FRAC]) {
+      ctx.beginPath();
+      ctx.moveTo(0, f * VIRT);
+      ctx.lineTo(VIRT, f * VIRT);
+      ctx.stroke();
+    }
     ctx.setLineDash([]);
-    if (onion) { ctx.fillStyle = "#c1c8ea"; for (const s of onion) { const p = path(s); if (p) ctx.fill(p); } }
-    ctx.fillStyle = "#1b1f3b";
-    for (const s of committed) { const p = path(s); if (p) ctx.fill(p); }
-    if (active) { const p = path(active); if (p) ctx.fill(p); }
+    if (onion) {
+      ctx.fillStyle = ink.onion;
+      for (const s of onion) {
+        const p = path(s);
+        if (p) ctx.fill(p);
+      }
+    }
+    ctx.fillStyle = ink.ink;
+    for (const s of committed) {
+      const p = path(s);
+      if (p) ctx.fill(p);
+    }
+    if (active) {
+      const p = path(active);
+      if (p) ctx.fill(p);
+    }
   }
 
   function pos(e: PointerEvent): Pt {
     const r = canvas.getBoundingClientRect();
-    return { x: ((e.clientX - r.left) / r.width) * VIRT, y: ((e.clientY - r.top) / r.height) * VIRT, pressure: e.pressure > 0 ? e.pressure : 0.5 };
+    return {
+      x: ((e.clientX - r.left) / r.width) * VIRT,
+      y: ((e.clientY - r.top) / r.height) * VIRT,
+      pressure: e.pressure > 0 ? e.pressure : 0.5,
+    };
   }
   const allowed = (e: PointerEvent) => !(ui.penSeen && e.pointerType !== "pen");
 
@@ -84,9 +118,20 @@
   }
 
   // reset the in-progress stroke when the pass changes / data is imported
-  $effect(() => { cap.activePass; ui.importTick; active = null; activeId = null; });
+  $effect(() => {
+    cap.activePass;
+    ui.importTick;
+    active = null;
+    activeId = null;
+  });
   // redraw whenever committed strokes or the onion-skin change
-  $effect(() => { committed; onion; cap.pen.size; cap.pen.thinning; redraw(); });
+  $effect(() => {
+    committed;
+    onion;
+    cap.pen.size;
+    cap.pen.thinning;
+    redraw();
+  });
   // size to the element
   $effect(() => {
     fit();
@@ -111,27 +156,67 @@
 
 <style>
   .cell {
-    position: relative; aspect-ratio: 1/1; background: #fff;
+    position: relative;
+    aspect-ratio: 1/1;
+    background: var(--canvas-bg);
     border: 1px solid var(--rule, oklch(47% 0.15 277 / 0.24));
-    border-radius: 13px; overflow: hidden;
-    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    border-radius: 13px;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
   }
   .cell.active {
     border-color: var(--indigo, oklch(47% 0.15 277));
     box-shadow: 0 0 0 2px var(--indigo, oklch(47% 0.15 277));
   }
-  .cell.done { background: var(--paper-deep, oklch(95.4% 0.011 92)); }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  .cell.done {
+    background: var(--paper-deep, oklch(95.4% 0.011 92));
+  }
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    display: block;
+  }
   .lbl {
-    position: absolute; top: 4px; left: 8px; font-family: "Bricolage Grotesque", system-ui, sans-serif;
-    font-size: 0.82rem; font-weight: 700; color: var(--indigo, oklch(47% 0.15 277)); opacity: 0.45; pointer-events: none;
+    position: absolute;
+    top: 4px;
+    left: 8px;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--indigo, oklch(47% 0.15 277));
+    opacity: 0.45;
+    pointer-events: none;
   }
   .clr {
-    position: absolute; top: 3px; right: 3px; padding: 2px 6px; font-size: 0.72rem; line-height: 1;
-    border: none; background: transparent; color: var(--ink-soft, oklch(43% 0.04 272)); opacity: 0.6; cursor: pointer;
-    transition: color 0.2s, opacity 0.2s;
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    padding: 2px 6px;
+    font-size: 0.72rem;
+    line-height: 1;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft, oklch(43% 0.04 272));
+    opacity: 0.6;
+    cursor: pointer;
+    transition:
+      color 0.2s,
+      opacity 0.2s;
   }
-  .clr:hover { color: var(--indigo, oklch(47% 0.15 277)); opacity: 1; }
-  .clr:active { color: var(--indigo, oklch(47% 0.15 277)); opacity: 1; }
+  .clr:hover {
+    color: var(--indigo, oklch(47% 0.15 277));
+    opacity: 1;
+  }
+  .clr:active {
+    color: var(--indigo, oklch(47% 0.15 277));
+    opacity: 1;
+  }
 </style>

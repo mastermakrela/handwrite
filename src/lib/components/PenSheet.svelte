@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getStroke } from "perfect-freehand";
   import { modal } from "$lib/actions/modal";
+  import { canvasInk } from "$lib/theme.svelte";
   import { cap, save, penOptions, DEFAULT_PEN, type Pen } from "$lib/capture.svelte";
 
   let { onClose }: { onClose: () => void } = $props();
@@ -13,7 +14,8 @@
     { name: "Bold", pen: { size: 46, thinning: 0.5 } },
     { name: "Calligraphy", pen: { size: 40, thinning: 0.95 } },
   ];
-  const isPreset = (p: { size: number; thinning: number }) => cap.pen.size === p.size && cap.pen.thinning === p.thinning;
+  const isPreset = (p: { size: number; thinning: number }) =>
+    cap.pen.size === p.size && cap.pen.thinning === p.thinning;
 
   function setPen(next: Partial<Pen>) {
     cap.pen = { ...cap.pen, ...next };
@@ -47,12 +49,15 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     // pen size is authored in a 1000-unit em; scale it to this little sample box
-    const o = getStroke(sample, { ...penOptions(), size: cap.pen.size * (H / 220) * 2.2 }) as number[][];
+    const o = getStroke(sample, {
+      ...penOptions(),
+      size: cap.pen.size * (H / 220) * 2.2,
+    }) as number[][];
     if (o.length < 2) return;
     const p = new Path2D();
     o.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y)));
     p.closePath();
-    ctx.fillStyle = "#1b1f3b";
+    ctx.fillStyle = canvasInk().ink;
     ctx.fill(p);
   }
   $effect(() => {
@@ -78,11 +83,14 @@
       <button class="close" onclick={onClose} aria-label="Close">✕</button>
     </header>
 
-    <canvas class="sample" bind:this={canvas} style="width:{W}px;height:{H}px" aria-hidden="true"></canvas>
+    <canvas class="sample" bind:this={canvas} style="width:{W}px;height:{H}px" aria-hidden="true"
+    ></canvas>
 
     <div class="presets">
       {#each PRESETS as pr (pr.name)}
-        <button class="chip" class:on={isPreset(pr.pen)} onclick={() => setPen(pr.pen)}>{pr.name}</button>
+        <button class="chip" class:on={isPreset(pr.pen)} onclick={() => setPen(pr.pen)}
+          >{pr.name}</button
+        >
       {/each}
     </div>
 
@@ -99,7 +107,10 @@
     </label>
 
     <label class="slider">
-      <span class="srow"><span>Pressure response</span><span class="val">{Math.round(cap.pen.thinning * 100)}%</span></span>
+      <span class="srow"
+        ><span>Pressure response</span><span class="val">{Math.round(cap.pen.thinning * 100)}%</span
+        ></span
+      >
       <input
         type="range"
         min="0"
@@ -137,55 +148,133 @@
     padding: 14px;
     box-shadow: 0 18px 50px oklch(30% 0.085 278 / 0.28);
   }
-  .sheet:focus-visible { outline: none; }
+  .sheet:focus-visible {
+    outline: none;
+  }
   .sheet-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 10px;
   }
-  .title { font-weight: 700; font-size: 0.95rem; color: var(--ink); }
-  button { font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; cursor: pointer; }
-  .close {
-    border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
-    border-radius: 9px; min-width: 36px; min-height: 36px; font-weight: 600;
+  .title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--ink);
   }
-  .close:hover { border-color: var(--indigo); color: var(--indigo); }
+  button {
+    font: inherit;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .close {
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 9px;
+    min-width: 36px;
+    min-height: 36px;
+    font-weight: 600;
+  }
+  .close:hover {
+    border-color: var(--indigo);
+    color: var(--indigo);
+  }
   .sample {
     display: block;
     width: 100%;
-    background: #fff;
+    background: var(--canvas-bg);
     border: 1px solid var(--rule);
     border-radius: 11px;
     margin-bottom: 12px;
   }
-  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
   .chip {
-    border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
-    border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 0.85rem; min-height: 40px;
-    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    min-height: 40px;
+    transition:
+      border-color 0.2s,
+      color 0.2s,
+      background 0.2s;
   }
-  .chip:hover { border-color: var(--indigo); color: var(--indigo); }
-  .chip.on { background: var(--indigo); border-color: var(--indigo); color: var(--paper); }
-  .slider { display: block; margin-bottom: 14px; }
+  .chip:hover {
+    border-color: var(--indigo);
+    color: var(--indigo);
+  }
+  .chip.on {
+    background: var(--indigo);
+    border-color: var(--indigo);
+    color: var(--paper);
+  }
+  .slider {
+    display: block;
+    margin-bottom: 14px;
+  }
   .srow {
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-weight: 600; font-size: 0.85rem; color: var(--ink); margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--ink);
+    margin-bottom: 6px;
   }
-  .val { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  input[type="range"] { width: 100%; accent-color: var(--indigo); height: 28px; }
+  .val {
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--indigo);
+    height: 28px;
+  }
   .sheet-foot {
-    margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--rule);
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
-  .note { font-size: 0.76rem; color: var(--ink-soft); line-height: 1.3; }
+  .note {
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+    line-height: 1.3;
+  }
   .link {
-    background: none; border: none; color: var(--ink-soft); font-size: 0.82rem;
-    text-decoration: underline; text-underline-offset: 3px; flex: none;
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    flex: none;
   }
-  .link:hover { color: var(--indigo); }
+  .link:hover {
+    color: var(--indigo);
+  }
   @media (max-width: 640px) {
-    .backdrop { align-items: flex-end; justify-content: stretch; padding: 0; }
-    .sheet { width: 100%; border-radius: 13px 13px 0 0; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+    .backdrop {
+      align-items: flex-end;
+      justify-content: stretch;
+      padding: 0;
+    }
+    .sheet {
+      width: 100%;
+      border-radius: 13px 13px 0 0;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    }
   }
 </style>

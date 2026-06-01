@@ -1,7 +1,13 @@
 <script lang="ts">
   import { tick } from "svelte";
   import { modal } from "$lib/actions/modal";
-  import { profiles, createProfile, switchProfile, renameProfile, deleteProfile } from "$lib/capture.svelte";
+  import {
+    profiles,
+    createProfile,
+    switchProfile,
+    renameProfile,
+    deleteProfile,
+  } from "$lib/capture.svelte";
 
   let { onClose, onShowIntro }: { onClose: () => void; onShowIntro: () => void } = $props();
 
@@ -77,23 +83,34 @@
                 if (e.key === "Escape") renamingId = null;
               }}
             />
-            <button class="icon" onclick={() => commitRename(p.id)} aria-label="Confirm rename">✓</button>
-            <button class="icon" onclick={() => (renamingId = null)} aria-label="Cancel rename">✕</button>
+            <button class="icon" onclick={() => commitRename(p.id)} aria-label="Confirm rename"
+              >✓</button
+            >
+            <button class="icon" onclick={() => (renamingId = null)} aria-label="Cancel rename"
+              >✕</button
+            >
           {:else if confirmDeleteId === p.id}
-            <span class="confirm">Delete '{p.name}' and all its letters? This can't be undone.</span>
+            <span class="confirm">Delete '{p.name}' and all its letters? This can't be undone.</span
+            >
             <button class="icon danger" onclick={() => doDelete(p.id)}>Delete</button>
             <button class="icon" onclick={() => (confirmDeleteId = null)}>Cancel</button>
           {:else}
             <button
               class="name"
               onclick={() => pick(p.id)}
-              aria-label={p.id === profiles.activeId ? `${p.name} (current profile)` : `Switch to ${p.name}`}
+              aria-label={p.id === profiles.activeId
+                ? `${p.name} (current profile)`
+                : `Switch to ${p.name}`}
               aria-current={p.id === profiles.activeId ? "true" : undefined}
             >
               {#if p.id === profiles.activeId}<span class="check" aria-hidden="true">✓</span>{/if}
               {p.name}
             </button>
-            <button class="icon" onclick={() => startRename(p.id, p.name)} aria-label="Rename profile">✎</button>
+            <button
+              class="icon"
+              onclick={() => startRename(p.id, p.name)}
+              aria-label="Rename profile">✎</button
+            >
             <button
               class="icon"
               onclick={() => ((confirmDeleteId = p.id), (renamingId = null))}
@@ -228,7 +245,9 @@
     font-weight: 600;
     font-size: 0.85rem;
     padding: 6px 10px;
-    transition: border-color 0.2s, color 0.2s;
+    transition:
+      border-color 0.2s,
+      color 0.2s;
   }
   .icon:not(:disabled):hover {
     border-color: var(--indigo);
@@ -240,12 +259,12 @@
   }
   .row.active .icon {
     background: var(--night);
-    border-color: color-mix(in oklch, var(--paper) 35%, transparent);
-    color: var(--paper);
+    border-color: color-mix(in oklch, var(--night-ink) 35%, transparent);
+    color: var(--night-ink);
   }
   .row.active .icon:not(:disabled):hover {
-    border-color: var(--paper);
-    color: var(--paper);
+    border-color: var(--night-ink);
+    color: var(--night-ink);
   }
   .icon.danger {
     color: oklch(52% 0.18 25);
@@ -300,7 +319,9 @@
     font-weight: 600;
     font-size: 0.88rem;
     min-height: 44px;
-    transition: border-color 0.2s, color 0.2s;
+    transition:
+      border-color 0.2s,
+      color 0.2s;
   }
   .newrow:hover {
     border-color: var(--indigo);

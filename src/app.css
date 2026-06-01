@@ -1,9 +1,44 @@
 /**
- * App-wide a11y baseline shared by every route (landing, app, preview).
- * Keeps the existing per-route OKLCH tokens and palm-safe rules intact; this
- * only adds a visible keyboard focus ring and a reduced-motion guard that were
- * previously missing from the capture UI.
+ * App-wide baseline shared by every route (landing, app, preview):
+ * the OKLCH theme tokens, a visible keyboard focus ring, and a
+ * reduced-motion guard.
  */
+
+/* Single source of truth for the palette. Light is the warm-paper original;
+   the dark block flips it to a deep indigo-charcoal under the OS setting.
+   `color-scheme` lets native controls (range tracks, scrollbars) follow suit.
+
+   --night / --night-ink are the "drenched" band (landing privacy section,
+   ProfileSheet active row): --night stays dark and --night-ink stays light in
+   BOTH themes, since that band is always dark-on-light by design. --canvas-bg
+   backs the <canvas> surfaces; their ink is themed in src/lib/theme.svelte.ts. */
+:root {
+  color-scheme: light dark;
+  --paper: oklch(97.6% 0.008 95);
+  --paper-deep: oklch(95.4% 0.011 92);
+  --ink: oklch(25% 0.045 270);
+  --ink-soft: oklch(43% 0.04 272);
+  --indigo: oklch(47% 0.15 277);
+  --indigo-bright: oklch(60% 0.17 280);
+  --rule: oklch(47% 0.15 277 / 0.24);
+  --night: oklch(30% 0.085 278);
+  --night-ink: oklch(92% 0.02 280);
+  --canvas-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: oklch(21% 0.024 275);
+    --paper-deep: oklch(26% 0.028 275);
+    --ink: oklch(93% 0.012 95);
+    --ink-soft: oklch(73% 0.026 275);
+    --indigo: oklch(72% 0.13 280);
+    --indigo-bright: oklch(82% 0.13 282);
+    --rule: oklch(72% 0.13 280 / 0.3);
+    --night: oklch(15% 0.028 278);
+    --canvas-bg: oklch(27% 0.03 275);
+  }
+}
 
 /* WCAG 2.4.7 — a visible focus indicator for every keyboard-operable control.
    Components may drop the OS outline, but they must not leave users with no

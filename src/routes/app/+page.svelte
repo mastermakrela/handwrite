@@ -123,20 +123,7 @@
 {/if}
 
 <style>
-  :global(:root) {
-    --paper: oklch(97.6% 0.008 95);
-    --paper-deep: oklch(95.4% 0.011 92);
-    --ink: oklch(25% 0.045 270);
-    --ink-soft: oklch(43% 0.04 272);
-    --indigo: oklch(47% 0.15 277);
-    --indigo-bright: oklch(60% 0.17 280);
-    --rule: oklch(47% 0.15 277 / 0.24);
-    --night: oklch(30% 0.085 278);
-    /* legacy aliases used by the canvas components' CSS */
-    --accent: var(--indigo);
-    --line: var(--rule);
-    --muted: var(--ink-soft);
-  }
+  /* Theme tokens live in app.css (shared by every route). */
   :global(html, body) {
     margin: 0;
     background: var(--paper);

@@ -6,7 +6,7 @@
   const charset = [
     "abcdefghijklmnopqrstuvwxyz",
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-    "0123456789  .,!?’\"-:;()",
+    '0123456789  .,!?’"-:;()',
     "ä ö ü ß   ą ć ę ł ń ó ś ź ż",
   ];
 </script>
@@ -19,7 +19,10 @@
   />
   <link rel="canonical" href="https://handwrite.app/" />
   <meta property="og:title" content="handwrite — a font that writes like you" />
-  <meta property="og:description" content="Turn your handwriting into a real, installable font. On your device, no account, no upload." />
+  <meta
+    property="og:description"
+    content="Turn your handwriting into a real, installable font. On your device, no account, no upload."
+  />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="/icons/icon-512.png" />
   <meta name="twitter:card" content="summary" />
@@ -56,17 +59,21 @@
         <a class="cta" href="/app">Open the studio <span aria-hidden="true">→</span></a>
         <a class="ghost" href="#how">How it works <span aria-hidden="true">↓</span></a>
       </div>
-      <p class="device r5">Best on an <strong>iPad with an Apple Pencil</strong>. Works in any modern browser.</p>
-      <p class="fine r6">No account, no upload, no server. Your handwriting never leaves the device.</p>
+      <p class="device r5">
+        Best on an <strong>iPad with an Apple Pencil</strong>. Works in any modern browser.
+      </p>
+      <p class="fine r6">
+        No account, no upload, no server. Your handwriting never leaves the device.
+      </p>
     </section>
 
     <section class="proof">
       <div class="say">
         <h2>Proofed on the only sentence that matters.</h2>
         <p>
-          Every typeface earns its name on a pangram, the one line that spends all twenty-six letters.
-          Write yours a few times and handwrite learns to vary each letter the way your hand already
-          does, so no two e's come out stamped from the same mould.
+          Every typeface earns its name on a pangram, the one line that spends all twenty-six
+          letters. Write yours a few times and handwrite learns to vary each letter the way your
+          hand already does, so no two e's come out stamped from the same mould.
         </p>
       </div>
       <p class="pangram lined">the quick brown fox jumps over the lazy dog</p>
@@ -118,7 +125,10 @@
           should.
         </p>
       </div>
-      <div class="specimen" aria-label="Character set: a to z, A to Z, digits, punctuation, German and Polish accents">
+      <div
+        class="specimen"
+        aria-label="Character set: a to z, A to Z, digits, punctuation, German and Polish accents"
+      >
         {#each charset as row}<span class="row lined">{row}</span>{/each}
       </div>
     </section>
@@ -141,30 +151,34 @@
         opens full-screen and keeps working with no signal. Paper and pen not included.
       </p>
       <a class="cta" href="/app">Open the studio <span aria-hidden="true">→</span></a>
-      <p class="device">On a laptop? Open it on your iPad with an Apple Pencil for the real thing.</p>
+      <p class="device">
+        On a laptop? Open it on your iPad with an Apple Pencil for the real thing.
+      </p>
     </section>
   </main>
 
   <footer>
     <span class="note">drawn by hand, kept on your device</span>
-    <span class="by">created by <a href="https://mastermakrela.com/" target="_blank" rel="noopener noreferrer">mastermakrela</a></span>
+    <span class="by"
+      >created by <a href="https://mastermakrela.com/" target="_blank" rel="noopener noreferrer"
+        >mastermakrela</a
+      ></span
+    >
   </footer>
 </div>
 
 <style>
-  :global(html) { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-  :global(body) { margin: 0; background: oklch(97.6% 0.008 95); }
+  :global(html) {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  :global(body) {
+    margin: 0;
+    background: var(--paper);
+  }
 
+  /* Theme tokens live in app.css (shared by every route). */
   .page {
-    --paper: oklch(97.6% 0.008 95);
-    --paper-deep: oklch(95.4% 0.011 92);
-    --ink: oklch(25% 0.045 270);
-    --ink-soft: oklch(43% 0.04 272);
-    --indigo: oklch(47% 0.15 277);
-    --indigo-bright: oklch(60% 0.17 280);
-    --rule: oklch(47% 0.15 277 / 0.24);
-    --night: oklch(30% 0.085 278);
-
     background: var(--paper);
     color: var(--ink);
     min-height: 100svh;
@@ -178,7 +192,11 @@
   .lined {
     --period: 1.34em;
     line-height: var(--period);
-    background-image: linear-gradient(to bottom, transparent calc(var(--period) - 2px), var(--rule) calc(var(--period) - 2px));
+    background-image: linear-gradient(
+      to bottom,
+      transparent calc(var(--period) - 2px),
+      var(--rule) calc(var(--period) - 2px)
+    );
     background-size: 100% var(--period);
     background-position: 0 0.16em;
   }
@@ -216,12 +234,21 @@
     font-size: 0.95rem;
     border-bottom: 2px solid var(--rule);
     padding-bottom: 3px;
-    transition: border-color 0.25s, color 0.25s;
+    transition:
+      border-color 0.25s,
+      color 0.25s;
   }
-  .open:hover { color: var(--indigo-bright); border-color: var(--indigo-bright); }
+  .open:hover {
+    color: var(--indigo-bright);
+    border-color: var(--indigo-bright);
+  }
 
-  main { width: 100%; }
-  section { padding-inline: clamp(18px, 5vw, 64px); }
+  main {
+    width: 100%;
+  }
+  section {
+    padding-inline: clamp(18px, 5vw, 64px);
+  }
 
   /* ---- hero ---- */
   .hero {
@@ -293,9 +320,14 @@
     font-size: 1.05rem;
     padding: 14px 26px;
     border-radius: 13px;
-    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s;
+    transition:
+      transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      background 0.25s;
   }
-  .cta:hover { background: var(--indigo-bright); transform: translateY(-2px); }
+  .cta:hover {
+    background: var(--indigo-bright);
+    transform: translateY(-2px);
+  }
   .ghost {
     color: var(--ink);
     text-decoration: none;
@@ -305,19 +337,26 @@
     padding-bottom: 3px;
     transition: border-color 0.25s;
   }
-  .ghost:hover { border-color: var(--indigo-bright); }
+  .ghost:hover {
+    border-color: var(--indigo-bright);
+  }
   .device {
     font-size: 0.95rem;
     color: var(--ink-soft);
     margin: clamp(18px, 2.6vw, 26px) 0 0;
   }
-  .device strong { color: var(--ink); font-weight: 700; }
+  .device strong {
+    color: var(--ink);
+    font-weight: 700;
+  }
   .fine {
     font-size: 0.92rem;
     color: var(--ink-soft);
     margin: 0.5em 0 0;
   }
-  .install .device { margin-top: clamp(16px, 2.4vw, 22px); }
+  .install .device {
+    margin-top: clamp(16px, 2.4vw, 22px);
+  }
 
   /* ---- shared section heads ---- */
   h2 {
@@ -328,7 +367,9 @@
     margin: 0;
     max-width: 18ch;
   }
-  .say { max-width: 60ch; }
+  .say {
+    max-width: 60ch;
+  }
   .say p {
     font-size: clamp(1rem, 1.8vw, 1.22rem);
     line-height: 1.6;
@@ -420,14 +461,19 @@
   /* ---- privacy: drenched ---- */
   .vault {
     background: var(--night);
-    color: var(--paper);
+    color: var(--night-ink);
     margin-top: clamp(40px, 7vw, 96px);
     padding-block: clamp(56px, 10vw, 140px);
   }
-  .vault .wrap { width: min(100%, 1180px); margin-inline: auto; }
-  .vault h2 { color: var(--paper); }
+  .vault .wrap {
+    width: min(100%, 1180px);
+    margin-inline: auto;
+  }
+  .vault h2 {
+    color: var(--night-ink);
+  }
   .vault p {
-    color: oklch(90% 0.02 280);
+    color: var(--night-ink);
     font-size: clamp(1.05rem, 2vw, 1.4rem);
     line-height: 1.62;
     max-width: 56ch;
@@ -448,7 +494,10 @@
     max-width: 50ch;
     margin: clamp(16px, 2.4vw, 26px) 0 clamp(28px, 4vw, 40px);
   }
-  .install strong { color: var(--ink); font-weight: 700; }
+  .install strong {
+    color: var(--ink);
+    font-weight: 700;
+  }
 
   footer {
     border-top: 1px solid var(--rule);
@@ -460,47 +509,89 @@
     gap: 8px 20px;
     color: var(--ink-soft);
   }
-  footer .note { font-family: "Shantell Sans", cursive; font-size: 1.05rem; }
-  footer .by { font-size: 0.85rem; }
+  footer .note {
+    font-family: "Shantell Sans", cursive;
+    font-size: 1.05rem;
+  }
+  footer .by {
+    font-size: 0.85rem;
+  }
   footer .by a {
     color: var(--indigo);
     text-decoration: none;
     border-bottom: 1px solid var(--rule);
     padding-bottom: 1px;
-    transition: border-color 0.25s, color 0.25s;
+    transition:
+      border-color 0.25s,
+      color 0.25s;
   }
-  footer .by a:hover { color: var(--indigo-bright); border-color: var(--indigo-bright); }
+  footer .by a:hover {
+    color: var(--indigo-bright);
+    border-color: var(--indigo-bright);
+  }
 
   /* ---- wide screens: heading rail + specimen, like a type-specimen sheet ---- */
   @media (min-width: 900px) {
-    .proof, .how, .charset {
+    .proof,
+    .how,
+    .charset {
       display: grid;
       grid-template-columns: minmax(0, 19rem) 1fr;
       column-gap: clamp(36px, 5vw, 88px);
       align-items: start;
     }
     /* the specimen/steps column starts level with its heading rail */
-    .pangram, .specimen, .steps { margin-top: 0; }
+    .pangram,
+    .specimen,
+    .steps {
+      margin-top: 0;
+    }
   }
 
   /* ---- entrance motion (opt-in; reduced-motion users see final state) ---- */
   @media (prefers-reduced-motion: no-preference) {
-    .hero .r1, .hero .r2, .hero .r3, .hero .r4, .hero .r5, .hero .r6 {
+    .hero .r1,
+    .hero .r2,
+    .hero .r3,
+    .hero .r4,
+    .hero .r5,
+    .hero .r6 {
       opacity: 0;
       transform: translateY(16px);
       animation: rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
-    .hero .r1 { animation-delay: 0.05s; }
-    .hero .r2 { animation-delay: 0.16s; }
-    .hero .r3 { animation-delay: 0.34s; }
-    .hero .r4 { animation-delay: 0.46s; }
-    .hero .r5 { animation-delay: 0.56s; }
-    .hero .r6 { animation-delay: 0.64s; }
+    .hero .r1 {
+      animation-delay: 0.05s;
+    }
+    .hero .r2 {
+      animation-delay: 0.16s;
+    }
+    .hero .r3 {
+      animation-delay: 0.34s;
+    }
+    .hero .r4 {
+      animation-delay: 0.46s;
+    }
+    .hero .r5 {
+      animation-delay: 0.56s;
+    }
+    .hero .r6 {
+      animation-delay: 0.64s;
+    }
     .you {
       clip-path: inset(0 100% 0 0);
       animation: write 0.95s 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
-    @keyframes rise { to { opacity: 1; transform: none; } }
-    @keyframes write { to { clip-path: inset(0 0 0 0); } }
+    @keyframes rise {
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    @keyframes write {
+      to {
+        clip-path: inset(0 0 0 0);
+      }
+    }
   }
 </style>

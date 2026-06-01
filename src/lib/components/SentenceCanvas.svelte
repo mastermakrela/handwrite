@@ -1,8 +1,13 @@
 <script lang="ts">
   import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
   import { strokePath as path } from "$lib/handwrite/capture/stroke-path";
-  import { assignStrokesToSegments, normalizeSegmentToCell, proposeDividers } from "$lib/handwrite/capture/segment";
+  import {
+    assignStrokesToSegments,
+    normalizeSegmentToCell,
+    proposeDividers,
+  } from "$lib/handwrite/capture/segment";
   import { PROMPTS, promptChars } from "$lib/handwrite/prompts";
+  import { canvasInk } from "$lib/theme.svelte";
   import { ui, applySentence, newPass, cap, type Stroke, type Pt } from "$lib/capture.svelte";
 
   // ---- prompt selection ----
@@ -37,7 +42,9 @@
   const allMarked = $derived(markedLetters === neededLetters && neededLetters > 0);
   // strokes whose centroid lands past the last target band (over-count warning,
   // mirrored here in text so it is not signalled by red colour alone)
-  const extraStrokes = $derived(segments.slice(target.length).reduce((n, seg) => n + seg.length, 0));
+  const extraStrokes = $derived(
+    segments.slice(target.length).reduce((n, seg) => n + seg.length, 0),
+  );
 
   // Save as soon as ≥1 letter is marked and nothing spills past the phrase. This
   // lets an incomplete line save the letters captured so far — positional mapping
@@ -48,7 +55,9 @@
   // status so screen-reader users hear marking progress and the over-count warning.
   const canvasLabel = $derived(
     `Handwriting canvas (Apple Pencil only). ${
-      hasDrawn ? `${markedLetters} of ${neededLetters} letters marked.` : "Empty — write the phrase here."
+      hasDrawn
+        ? `${markedLetters} of ${neededLetters} letters marked.`
+        : "Empty — write the phrase here."
     }${extraStrokes > 0 ? ` ${extraStrokes} extra strokes beyond the phrase.` : ""}`,
   );
   const statusText = $derived(
@@ -65,7 +74,8 @@
 
   // ---- this round (active pass) already has content? ----
   const activeHasContent = $derived(
-    !!cap.passes[cap.activePass] && Object.values(cap.passes[cap.activePass]).some((s) => s?.length),
+    !!cap.passes[cap.activePass] &&
+      Object.values(cap.passes[cap.activePass]).some((s) => s?.length),
   );
 
   function markLetters() {
@@ -109,6 +119,7 @@
     if (!ctx || !canvas) return;
     const r = canvas.getBoundingClientRect();
     const VW = vWidth();
+    const ink = canvasInk();
     const px = VIRT / Math.max(1, r.height);
     ctx.clearRect(0, 0, VW, VIRT);
 
@@ -116,14 +127,14 @@
     const bounds = [0, ...sortedDividers, VW];
     for (let k = 0; k < bounds.length - 1; k++) {
       const beyond = k >= target.length;
-      ctx.fillStyle = beyond ? "rgba(220,80,80,0.10)" : k % 2 ? "rgba(74,56,170,0.05)" : "rgba(74,56,170,0.10)";
+      ctx.fillStyle = beyond ? ink.tintBeyond : k % 2 ? ink.tintOdd : ink.tintEven;
       ctx.fillRect(bounds[k], 0, bounds[k + 1] - bounds[k], VIRT);
       // target-char label near the top of each band (space tokens stay blank).
       // Don't label the single full-width band before any dividers exist — a lone
       // "t" floating in an empty canvas just reads as confusing.
       const ch = target[k];
       if (dividers.length > 0 && ch && ch !== " ") {
-        ctx.fillStyle = "#9aa0c8";
+        ctx.fillStyle = ink.label;
         ctx.font = `${0.16 * VIRT}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
@@ -132,29 +143,47 @@
     }
 
     // guides
-    ctx.strokeStyle = "#cdd2ee";
+    ctx.strokeStyle = ink.guide;
     ctx.lineWidth = px;
-    ctx.beginPath(); ctx.moveTo(0, BASELINE_FRAC * VIRT); ctx.lineTo(VW, BASELINE_FRAC * VIRT); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, BASELINE_FRAC * VIRT);
+    ctx.lineTo(VW, BASELINE_FRAC * VIRT);
+    ctx.stroke();
     ctx.setLineDash([4 * px, 4 * px]);
-    for (const f of [XHEIGHT_FRAC, CAP_FRAC]) { ctx.beginPath(); ctx.moveTo(0, f * VIRT); ctx.lineTo(VW, f * VIRT); ctx.stroke(); }
+    for (const f of [XHEIGHT_FRAC, CAP_FRAC]) {
+      ctx.beginPath();
+      ctx.moveTo(0, f * VIRT);
+      ctx.lineTo(VW, f * VIRT);
+      ctx.stroke();
+    }
     ctx.setLineDash([]);
 
     // ink — strokes in a band beyond the target count are warned (red)
     for (let k = 0; k < segments.length; k++) {
-      ctx.fillStyle = k >= target.length ? "#c0392b" : "#1b1f3b";
-      for (const s of segments[k]) { const p = path(s); if (p) ctx.fill(p); }
+      ctx.fillStyle = k >= target.length ? ink.over : ink.ink;
+      for (const s of segments[k]) {
+        const p = path(s);
+        if (p) ctx.fill(p);
+      }
     }
-    if (active) { ctx.fillStyle = "#1b1f3b"; const p = path(active); if (p) ctx.fill(p); }
+    if (active) {
+      ctx.fillStyle = ink.ink;
+      const p = path(active);
+      if (p) ctx.fill(p);
+    }
 
     // dividers (vertical lines with a small ✕ affordance at the top)
-    ctx.strokeStyle = "#4a38aa";
+    ctx.strokeStyle = ink.divider;
     ctx.lineWidth = 2 * px;
-    ctx.fillStyle = "#4a38aa";
+    ctx.fillStyle = ink.divider;
     ctx.font = `${0.12 * VIRT}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (const dx of dividers) {
-      ctx.beginPath(); ctx.moveTo(dx, 0); ctx.lineTo(dx, VIRT); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(dx, 0);
+      ctx.lineTo(dx, VIRT);
+      ctx.stroke();
       ctx.fillText("✕", dx, 0.07 * VIRT);
     }
   }
@@ -162,7 +191,11 @@
   function pos(e: PointerEvent): Pt {
     const r = canvas.getBoundingClientRect();
     const k = VIRT / r.height;
-    return { x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k, pressure: e.pressure > 0 ? e.pressure : 0.5 };
+    return {
+      x: (e.clientX - r.left) * k,
+      y: (e.clientY - r.top) * k,
+      pressure: e.pressure > 0 ? e.pressure : 0.5,
+    };
   }
   const allowed = (e: PointerEvent) => !(ui.penSeen && e.pointerType !== "pen");
 
@@ -188,7 +221,10 @@
   function move(e: PointerEvent) {
     if (tool === "divide") return divideMove(e);
     if (tool === "erase") {
-      if (erasing && allowed(e)) { e.preventDefault(); eraseAt(pos(e)); } // scrub to keep erasing
+      if (erasing && allowed(e)) {
+        e.preventDefault();
+        eraseAt(pos(e));
+      } // scrub to keep erasing
       return;
     }
     if (!active || e.pointerId !== activeId || !allowed(e)) return; // only the owning pointer extends it
@@ -199,7 +235,10 @@
   }
   function end(e: PointerEvent) {
     if (tool === "divide") return divideUp(e);
-    if (tool === "erase") { erasing = false; return; }
+    if (tool === "erase") {
+      erasing = false;
+      return;
+    }
     if (!active || e.pointerId !== activeId) return;
     e.preventDefault();
     if (active.length > 1) strokes = [...strokes, active];
@@ -211,8 +250,15 @@
   // ---- divide tool: tap to drop, drag to adjust, tap a divider to remove ----
   const NEAR = 30; // virtual-unit hit radius for grabbing/removing a divider
   function nearestDivider(vx: number): number {
-    let best = -1, bestD = NEAR;
-    dividers.forEach((dx, i) => { const d = Math.abs(dx - vx); if (d < bestD) { bestD = d; best = i; } });
+    let best = -1,
+      bestD = NEAR;
+    dividers.forEach((dx, i) => {
+      const d = Math.abs(dx - vx);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
     return best;
   }
   function divideDown(e: PointerEvent) {
@@ -222,7 +268,10 @@
     const vx = pos(e).x;
     const i = nearestDivider(vx);
     if (i >= 0) drag = { idx: i, moved: false, created: false, id: e.pointerId };
-    else { dividers = [...dividers, vx]; drag = { idx: dividers.length - 1, moved: false, created: true, id: e.pointerId }; }
+    else {
+      dividers = [...dividers, vx];
+      drag = { idx: dividers.length - 1, moved: false, created: true, id: e.pointerId };
+    }
     redraw();
   }
   function divideMove(e: PointerEvent) {
@@ -247,10 +296,20 @@
   const ERASE_R = 60; // virtual-unit hit radius for grabbing a stroke
   function eraseAt(p: Pt) {
     const di = nearestDivider(p.x); // dividers win when tapped right on the line
-    if (di >= 0) { dividers = dividers.filter((_, k) => k !== di); return; }
-    let best = -1, bestD = ERASE_R;
+    if (di >= 0) {
+      dividers = dividers.filter((_, k) => k !== di);
+      return;
+    }
+    let best = -1,
+      bestD = ERASE_R;
     strokes.forEach((s, i) => {
-      for (const q of s) { const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bestD) { bestD = d; best = i; } }
+      for (const q of s) {
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
     });
     if (best >= 0) strokes = strokes.filter((_, k) => k !== best);
   }
@@ -288,7 +347,14 @@
     tool = "write";
   }
   // redraw whenever inputs change
-  $effect(() => { strokes; dividers; target; cap.pen.size; cap.pen.thinning; redraw(); });
+  $effect(() => {
+    strokes;
+    dividers;
+    target;
+    cap.pen.size;
+    cap.pen.thinning;
+    redraw();
+  });
   // re-fit when the Write view is shown again (it stays mounted-but-hidden while
   // on the Grid tab, where the canvas measures 0 and can't be drawn into)
   $effect(() => {
@@ -296,19 +362,27 @@
   });
   $effect(() => {
     fit();
-    const ro = new ResizeObserver(() => { fit(); checkScrollable(); });
+    const ro = new ResizeObserver(() => {
+      fit();
+      checkScrollable();
+    });
     if (canvas) ro.observe(canvas);
     return () => ro.disconnect();
   });
   // recompute the horizontal-scroll affordance when the required width changes
-  $effect(() => { canvasW; checkScrollable(); });
+  $effect(() => {
+    canvasW;
+    checkScrollable();
+  });
 </script>
 
 <div class="phrase">
   {#if showPhrases}
     <div class="prompts">
       {#each PROMPTS as pr, i (pr.id)}
-        <button class="chip" class:on={!useCustom && promptIdx === i} onclick={() => pickPrompt(i)}>{pr.text}</button>
+        <button class="chip" class:on={!useCustom && promptIdx === i} onclick={() => pickPrompt(i)}
+          >{pr.text}</button
+        >
       {/each}
       <input
         class="custom"
@@ -326,7 +400,12 @@
   {/if}
 </div>
 
-<div class="canvas-scroll" style="--canvas-w: {canvasW};" bind:this={scroller} onscroll={checkScrollable}>
+<div
+  class="canvas-scroll"
+  style="--canvas-w: {canvasW};"
+  bind:this={scroller}
+  onscroll={checkScrollable}
+>
   <canvas
     bind:this={canvas}
     aria-label={canvasLabel}
@@ -354,7 +433,8 @@
     <span class="count" class:ok={allMarked && extraStrokes === 0} class:warn={extraStrokes > 0}>
       {#if extraStrokes > 0}
         {extraStrokes} extra {extraStrokes === 1 ? "stroke" : "strokes"} beyond the phrase
-      {:else if allMarked}All {neededLetters} letters marked{:else}{markedLetters} of {neededLetters} letters marked{/if}
+      {:else if allMarked}All {neededLetters} letters marked{:else}{markedLetters} of {neededLetters}
+        letters marked{/if}
     </span>
     <button onclick={clearAll}>clear</button>
     {#if dividers.length === 0}
@@ -375,85 +455,253 @@
   {#if !hasDrawn}
     Write the whole sentence in print — lift the Pencil between letters.
   {:else if !allMarked}
-    Tap <b>Mark the letters</b> to auto-place dividers, then nudge any boundary with the <b>divide</b> tool. No room for
-    the whole phrase? <b>Save this round</b> keeps the letters marked so far — write the rest in another round.
+    Tap <b>Mark the letters</b> to auto-place dividers, then nudge any boundary with the
+    <b>divide</b>
+    tool. No room for the whole phrase? <b>Save this round</b> keeps the letters marked so far — write
+    the rest in another round.
   {:else}
     Looks good — tap <b>Save this round</b> to store these letters, then add another round.
   {/if}
 </p>
 
 <style>
-  .phrase { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; padding: 14px clamp(14px, 4vw, 28px) 4px; }
+  .phrase {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    flex-wrap: wrap;
+    padding: 14px clamp(14px, 4vw, 28px) 4px;
+  }
   .ref-line {
-    font-family: "Shantell Sans", cursive; font-size: clamp(1.2rem, 3vw, 1.6rem); letter-spacing: 0.02em;
-    color: var(--ink); font-weight: 500;
+    font-family: "Shantell Sans", cursive;
+    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    font-weight: 500;
   }
   .quiet {
-    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 600; font-size: 0.82rem;
-    background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 0 0 2px;
-    border-bottom: 2px solid var(--rule); border-radius: 0; transition: color 0.2s, border-color 0.2s;
+    font: inherit;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 0 0 2px;
+    border-bottom: 2px solid var(--rule);
+    border-radius: 0;
+    transition:
+      color 0.2s,
+      border-color 0.2s;
   }
-  .quiet:hover { color: var(--indigo); border-color: var(--indigo); }
-  .prompts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 0; }
+  .quiet:hover {
+    color: var(--indigo);
+    border-color: var(--indigo);
+  }
+  .prompts {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0;
+  }
   .chip {
-    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 0.78rem;
-    padding: 5px 12px; border-radius: 999px; border: 1px solid var(--rule);
-    background: var(--paper-deep); color: var(--ink-soft); cursor: pointer; font-weight: 600;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    font: inherit;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: var(--paper-deep);
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-weight: 600;
+    transition:
+      background 0.2s,
+      color 0.2s,
+      border-color 0.2s;
   }
-  .chip:hover { border-color: var(--indigo); color: var(--indigo); }
-  .chip.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
-  .chip.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
+  .chip:hover {
+    border-color: var(--indigo);
+    color: var(--indigo);
+  }
+  .chip.on {
+    background: var(--indigo);
+    color: var(--paper);
+    border-color: var(--indigo);
+  }
+  .chip.on:hover {
+    background: var(--indigo-bright);
+    border-color: var(--indigo-bright);
+    color: var(--paper);
+  }
   .custom {
-    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 0.8rem;
-    padding: 6px 11px; border: 1px solid var(--rule); border-radius: 11px; min-width: 140px;
-    background: var(--paper-deep); color: var(--ink);
+    font: inherit;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: 0.8rem;
+    padding: 6px 11px;
+    border: 1px solid var(--rule);
+    border-radius: 11px;
+    min-width: 140px;
+    background: var(--paper-deep);
+    color: var(--ink);
   }
-  .custom::placeholder { color: var(--ink-soft); }
-  .custom:focus-visible { outline-offset: 0; border-color: var(--indigo); box-shadow: 0 0 0 2px var(--indigo); }
-  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px clamp(14px, 4vw, 28px); }
-  .tools { display: flex; gap: 4px; }
+  .custom::placeholder {
+    color: var(--ink-soft);
+  }
+  .custom:focus-visible {
+    outline-offset: 0;
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 2px var(--indigo);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px clamp(14px, 4vw, 28px);
+  }
+  .tools {
+    display: flex;
+    gap: 4px;
+  }
   .tools button {
-    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 600; font-size: 0.84rem;
-    border: 1px solid var(--rule); background: var(--paper-deep); color: var(--ink); padding: 11px 14px; min-height: 44px; border-radius: 11px; cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    font: inherit;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.84rem;
+    border: 1px solid var(--rule);
+    background: var(--paper-deep);
+    color: var(--ink);
+    padding: 11px 14px;
+    min-height: 44px;
+    border-radius: 11px;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      color 0.2s,
+      border-color 0.2s,
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .tools button:hover { border-color: var(--indigo); color: var(--indigo); transform: translateY(-1px); }
-  .tools button.on { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
-  .tools button.on:hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
-  .spacer { flex: 1; }
-  .count { font-size: 0.85rem; color: var(--ink-soft); white-space: nowrap; }
-  .count.ok { color: oklch(52% 0.13 150); font-weight: 700; }
-  .count.warn { color: oklch(52% 0.18 25); font-weight: 700; }
+  .tools button:hover {
+    border-color: var(--indigo);
+    color: var(--indigo);
+    transform: translateY(-1px);
+  }
+  .tools button.on {
+    background: var(--indigo);
+    color: var(--paper);
+    border-color: var(--indigo);
+  }
+  .tools button.on:hover {
+    background: var(--indigo-bright);
+    border-color: var(--indigo-bright);
+    color: var(--paper);
+  }
+  .spacer {
+    flex: 1;
+  }
+  .count {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .count.ok {
+    color: oklch(52% 0.13 150);
+    font-weight: 700;
+  }
+  .count.warn {
+    color: oklch(52% 0.18 25);
+    font-weight: 700;
+  }
   .sr-only {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
   .bar button {
-    font: inherit; font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 600; font-size: 0.84rem;
-    border: 1px solid var(--rule); background: var(--paper-deep); color: var(--ink); padding: 11px 14px; min-height: 44px; border-radius: 11px; cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    font: inherit;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.84rem;
+    border: 1px solid var(--rule);
+    background: var(--paper-deep);
+    color: var(--ink);
+    padding: 11px 14px;
+    min-height: 44px;
+    border-radius: 11px;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      color 0.2s,
+      border-color 0.2s,
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .bar button:not(:disabled):hover { border-color: var(--indigo); color: var(--indigo); transform: translateY(-1px); }
-  .bar button.primary { background: var(--indigo); color: var(--paper); border-color: var(--indigo); }
-  .bar button.primary:not(:disabled):hover { background: var(--indigo-bright); border-color: var(--indigo-bright); color: var(--paper); }
-  .bar button:disabled { opacity: 0.4; cursor: default; }
+  .bar button:not(:disabled):hover {
+    border-color: var(--indigo);
+    color: var(--indigo);
+    transform: translateY(-1px);
+  }
+  .bar button.primary {
+    background: var(--indigo);
+    color: var(--paper);
+    border-color: var(--indigo);
+  }
+  .bar button.primary:not(:disabled):hover {
+    background: var(--indigo-bright);
+    border-color: var(--indigo-bright);
+    color: var(--paper);
+  }
+  .bar button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
   .canvas-scroll {
     position: relative;
-    overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
-    touch-action: pan-x; margin: 0 clamp(14px, 4vw, 28px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    margin: 0 clamp(14px, 4vw, 28px);
   }
   canvas {
-    display: block; width: max(100%, var(--canvas-w));
-    height: clamp(90px, 13vh, 130px); background: #fff;
-    border: 1px solid var(--rule); border-radius: 13px; touch-action: none;
-    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    display: block;
+    width: max(100%, var(--canvas-w));
+    height: clamp(90px, 13vh, 130px);
+    background: var(--canvas-bg);
+    border: 1px solid var(--rule);
+    border-radius: 13px;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
   .scroll-cue {
     font-family: "Bricolage Grotesque", system-ui, sans-serif;
-    color: var(--ink-soft); font-size: 0.76rem; font-weight: 600;
-    padding: 4px clamp(14px, 4vw, 28px) 0; display: flex; align-items: center; gap: 5px;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 4px clamp(14px, 4vw, 28px) 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
-  .hint { color: var(--ink-soft); font-size: 0.82rem; line-height: 1.5; max-width: 80ch; padding: 10px clamp(14px, 4vw, 28px) 84px; }
-  .hint b { color: var(--ink); font-weight: 700; }
+  .hint {
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    max-width: 80ch;
+    padding: 10px clamp(14px, 4vw, 28px) 84px;
+  }
+  .hint b {
+    color: var(--ink);
+    font-weight: 700;
+  }
 </style>
