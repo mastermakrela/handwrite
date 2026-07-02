@@ -32,6 +32,8 @@ export interface StrokeOptions {
   streamline?: number;
   /** false when you have real pen pressure; true to fake it from velocity. */
   simulatePressure?: boolean;
+  /** taper length (input units) at both stroke ends — 0 for a flat fineliner. */
+  capTaper?: number;
 }
 
 const DEFAULT_STROKE: Required<StrokeOptions> = {
@@ -40,6 +42,7 @@ const DEFAULT_STROKE: Required<StrokeOptions> = {
   smoothing: 0.5,
   streamline: 0.5,
   simulatePressure: false,
+  capTaper: 0,
 };
 
 type Ring = [number, number][];
@@ -49,7 +52,16 @@ export function strokeToRings(points: InputPoint[], opts: StrokeOptions = {}): R
   const options = { ...DEFAULT_STROKE, ...opts };
   const inputs = points.map((p) => [p.x, p.y, p.pressure ?? 0.5] as [number, number, number]);
 
-  const outline = getStroke(inputs, options) as [number, number][];
+  const outline = getStroke(inputs, {
+    size: options.size,
+    thinning: options.thinning,
+    smoothing: options.smoothing,
+    streamline: options.streamline,
+    simulatePressure: options.simulatePressure,
+    // round caps always; taper toward the ends gives the gentle pen-lift look.
+    start: { cap: true, taper: options.capTaper },
+    end: { cap: true, taper: options.capTaper },
+  }) as [number, number][];
   if (outline.length < 3) return [];
 
   // Self-union flattens any self-intersections into clean simple polygons.

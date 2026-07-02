@@ -27,9 +27,40 @@ const newId = () =>
 export type Pen = { size: number; thinning: number };
 export const DEFAULT_PEN: Pen = { size: 30, thinning: 0.6 };
 
-/** Output-font tuning, adjustable on the Preview page (weight / roundness / spacing). */
-export type FontTune = { weight: number; smoothing: number; spacing: number };
-export const DEFAULT_FONT: FontTune = { weight: 30, smoothing: 0.72, spacing: 38 };
+/**
+ * Output-font tuning, exposed on the Preview page (see fontBuildOptions). The
+ * pipeline is centerline-first: clean the pen path, then ink it at a fixed width.
+ *   - weight    → stroke width (a fineliner nib)
+ *   - smoothing → master cleanup: coarsens resample spacing (the real de-jitter,
+ *                 since resampling removes hand-shake) + adds Chaikin rounding
+ *   - cornerAngle → turn sharper than this stays a corner (only in "keep" mode)
+ *   - spacing   → side bearing per side
+ *   - penModel  → "constant" fineliner vs. "taper" (thins toward stroke ends)
+ *   - corners   → "keep" deliberate corners vs. "round" everything
+ *   - variation → "cycle" alternates per pass vs. "single" clean glyph
+ *   - pressure  → use real Apple-Pencil pressure to vary stroke width (hand feel)
+ *                 vs. dead-constant monoline
+ */
+export type FontTune = {
+  weight: number;
+  smoothing: number;
+  cornerAngle: number;
+  spacing: number;
+  penModel: "constant" | "taper";
+  corners: "keep" | "round";
+  variation: "cycle" | "single";
+  pressure: boolean;
+};
+export const DEFAULT_FONT: FontTune = {
+  weight: 30,
+  smoothing: 0.5,
+  cornerAngle: 75,
+  spacing: 38,
+  penModel: "constant",
+  corners: "keep",
+  variation: "cycle",
+  pressure: false,
+};
 
 export const cap = $state({
   passes: [{}] as Pass[],
@@ -49,17 +80,41 @@ export function penOptions() {
   return { ...FREEHAND_BASE, size: cap.pen.size, thinning: cap.pen.thinning, smoothing: 0.5 };
 }
 
-/** glyph-build options derived from the Preview-page font tuning (drives preview + export). */
-export function fontBuildOptions() {
+/**
+ * Build glyph-build options from an explicit FontTune. The comparison UI calls
+ * this with hypothetical settings; the live preview/export uses the current font.
+ *
+ * Smoothing is the master cleanup knob: it coarsens the resample spacing (the
+ * strongest, most visible smoother — fewer samples skip small wiggles) AND adds
+ * Chaikin rounding passes. De-jitter is a finer low-pass on top.
+ */
+export function fontBuildOptionsFrom(f: FontTune) {
+  const taper = f.penModel === "taper";
   return {
-    sideBearing: cap.font.spacing,
+    sideBearing: f.spacing,
+    variation: f.variation,
+    centerline: {
+      spacing: Math.round(3 + f.smoothing * 13), // 3..16 capture units (the real de-jitter)
+      dejitterRadius: Math.round(f.smoothing * 2), // tiny extra low-pass at high smoothing
+      iterations: f.smoothing > 0.66 ? 2 : f.smoothing > 0.33 ? 1 : 0,
+      corners: f.corners,
+      cornerAngle: f.cornerAngle,
+    },
     stroke: {
-      ...FREEHAND_BASE,
-      size: cap.font.weight,
-      thinning: cap.pen.thinning,
-      smoothing: cap.font.smoothing,
+      simulatePressure: false,
+      size: f.weight,
+      // pressure mode: real pen pressure modulates width; off: dead-constant monoline
+      thinning: f.pressure ? 0.55 : 0,
+      streamline: 0.4,
+      smoothing: 0.5,
+      capTaper: taper ? f.weight * 1.2 : 0, // thin toward the ends in taper mode
     },
   };
+}
+
+/** glyph-build options derived from the current Preview-page font tuning. */
+export function fontBuildOptions() {
+  return fontBuildOptionsFrom(cap.font);
 }
 
 /** transient UI state (not persisted) */

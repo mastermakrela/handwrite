@@ -96,3 +96,36 @@ export function simplifyAndFit(ring: Pt[], epsilon: number): FittedRing | null {
   if (simplified.length < 3) return null;
   return catmullRomClosed(simplified);
 }
+
+/**
+ * Fit a closed ring as a quadratic B-spline (midpoint construction), expressed
+ * as cubic segments so the existing emitter can stay unchanged.
+ *
+ * Unlike Catmull-Rom, this NEVER overshoots its control points — the curve stays
+ * inside the polygon's convex hull. That matters for a stroked outline: the round
+ * caps of a pen stroke are sharp corners on the ring, and Catmull-Rom bulges out
+ * past them (the "unbalanced blob" artifact). The midpoint spline just rounds
+ * them cleanly. Use this for outlines that are ALREADY smooth (centerline-first
+ * strokes); it trades a little corner crispness for guaranteed no overshoot.
+ */
+export function fitClosedSmooth(ring: Pt[], epsilon: number): FittedRing | null {
+  const pts = simplifyRing(ring, epsilon);
+  const n = pts.length;
+  if (n < 3) return null;
+  const at = (i: number) => pts[((i % n) + n) % n];
+  const mid = (i: number): Pt => [(at(i)[0] + at(i + 1)[0]) / 2, (at(i)[1] + at(i + 1)[1]) / 2];
+
+  const start = mid(-1);
+  const segs: CubicSeg[] = [];
+  let cur = start;
+  for (let i = 0; i < n; i++) {
+    const ctrl = at(i);
+    const end = mid(i);
+    // quadratic (cur, ctrl, end) -> equivalent cubic control points
+    const c1: Pt = [cur[0] + (2 / 3) * (ctrl[0] - cur[0]), cur[1] + (2 / 3) * (ctrl[1] - cur[1])];
+    const c2: Pt = [end[0] + (2 / 3) * (ctrl[0] - end[0]), end[1] + (2 / 3) * (ctrl[1] - end[1])];
+    segs.push({ c1, c2, end });
+    cur = end;
+  }
+  return { start, segs };
+}

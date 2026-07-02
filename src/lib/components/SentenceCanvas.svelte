@@ -5,51 +5,126 @@
     assignStrokesToSegments,
     normalizeSegmentToCell,
     proposeDividers,
+    strokeCentroidY,
   } from "$lib/handwrite/capture/segment";
-  import { PROMPTS, promptChars } from "$lib/handwrite/prompts";
+  import { PROMPTS, promptChars, coverageRows } from "$lib/handwrite/prompts";
   import { canvasInk } from "$lib/theme.svelte";
-  import { ui, applySentence, newPass, cap, type Stroke, type Pt } from "$lib/capture.svelte";
+  import {
+    ui,
+    applySentence,
+    newPass,
+    cap,
+    chars,
+    type Stroke,
+    type Pt,
+  } from "$lib/capture.svelte";
 
   // ---- prompt selection ----
+  // The target is a list of LINES, each a list of tokens (chars; " " = word gap).
+  // The default "full set" line-set is generated from the enabled groups, so it
+  // grows as groups are toggled. Presets stay single-line; custom is multi-line.
   let promptIdx = $state(0);
-  let custom = $state("");
-  let useCustom = $state(false);
+  let custom = $state(""); // live textarea value (uncommitted)
+  let committedCustom = $state(""); // rows only follow the committed value
+  let useFullSet = $state(true);
   let showPhrases = $state(false);
-  const target = $derived(useCustom ? promptChars(custom) : PROMPTS[promptIdx].chars);
-  const phraseText = $derived(useCustom ? custom : PROMPTS[promptIdx].text);
+  const useCustom = $derived(committedCustom.trim().length > 0);
+  const rows = $derived.by(() => {
+    if (useCustom) {
+      const r = committedCustom
+        .split(/\n+/)
+        .map(promptChars)
+        .filter((line) => line.length > 0);
+      if (r.length) return r;
+    }
+    return useFullSet ? coverageRows(chars()) : [PROMPTS[promptIdx].chars];
+  });
+  const phraseText = $derived(rows.map((line) => line.join("")).join("\n"));
 
   // ---- capture state ----
-  let tool = $state<"write" | "divide" | "erase">("write");
-  let strokes = $state<Stroke[]>([]);
-  let dividers = $state<number[]>([]); // x positions in virtual coords
+  // Only strokes are state. The letter boundaries are NOT editable state — they
+  // are re-derived from the ink on every change (see rowDividers), so there is
+  // nothing for the user to manually break. You write; you erase a stroke; the
+  // split follows automatically.
+  let tool = $state<"write" | "erase">("write");
+  let strokes = $state<Stroke[]>([]); // flat, in global virtual coords (y spans all rows)
   let active: Stroke | null = null; // in-progress stroke (imperative)
   let activeId: number | null = null; // pointer that owns the active stroke
-  let drag: { idx: number; moved: boolean; created: boolean; id: number } | null = null;
   let erasing = false; // erase tool pointer is down (scrub-to-erase)
 
-  const G = { baselineY: BASELINE_FRAC * VIRT, xHeightY: XHEIGHT_FRAC * VIRT };
-  const segments = $derived(assignStrokesToSegments(strokes, dividers));
-  const sortedDividers = $derived([...dividers].sort((a, b) => a - b));
+  /** Total virtual height — one VIRT-tall band stacked per row. */
+  const VH = $derived(rows.length * VIRT);
+  /** Per-row guide lines (offset into the stacked virtual space). */
+  const G = (r: number) => ({
+    baselineY: r * VIRT + BASELINE_FRAC * VIRT,
+    xHeightY: r * VIRT + XHEIGHT_FRAC * VIRT,
+  });
+  const rowOf = (y: number) => Math.max(0, Math.min(rows.length - 1, Math.floor(y / VIRT)));
+  /** strokes bucketed by row (each stroke's centroid decides) — computed once per ink change. */
+  const rowStrokes = $derived.by(() => {
+    const buckets: Stroke[][] = rows.map(() => []);
+    for (const s of strokes) buckets[rowOf(strokeCentroidY(s))].push(s);
+    return buckets;
+  });
+  // letter boundaries, re-derived live from the ink — one proposal per row
+  const rowDividers = $derived(rows.map((line, r) => proposeDividers(rowStrokes[r], line)));
+  // strokes bucketed into each row's bands (segmentation is horizontal-only)
+  const rowSegments = $derived(
+    rows.map((_, r) => assignStrokesToSegments(rowStrokes[r], rowDividers[r])),
+  );
 
   // ---- progressive disclosure + plain-language counters ----
   const hasDrawn = $derived(strokes.length > 0);
-  const neededLetters = $derived(target.filter((t) => t !== " ").length);
-  const wordGaps = $derived(target.filter((t) => t === " ").length);
-  // count target positions (non-space) whose assigned segment has at least one stroke
-  const markedLetters = $derived(
-    target.reduce((n, ch, i) => (ch !== " " && segments[i]?.length ? n + 1 : n), 0),
-  );
-  const allMarked = $derived(markedLetters === neededLetters && neededLetters > 0);
-  // strokes whose centroid lands past the last target band (over-count warning,
-  // mirrored here in text so it is not signalled by red colour alone)
-  const extraStrokes = $derived(
-    segments.slice(target.length).reduce((n, seg) => n + seg.length, 0),
-  );
 
-  // Save as soon as ≥1 letter is marked and nothing spills past the phrase. This
-  // lets an incomplete line save the letters captured so far — positional mapping
-  // (band i → token i) means the unwritten tail is simply skipped on apply.
-  const canApply = $derived(markedLetters >= 1 && extraStrokes === 0);
+  // The paragraph is ONE ordered sequence of letters; the line breaks are only a
+  // writing convenience. We zip the written clusters (non-empty bands, read
+  // top→bottom then left→right) onto this flat sequence, so it doesn't matter how
+  // the letters are spread across the baselines — letter i is target letter i.
+  const targetLetters = $derived(rows.flat().filter((t) => t !== " "));
+  const neededLetters = $derived(targetLetters.length);
+
+  /**
+   * Walk every band in reading order and map each WRITTEN one to the next target
+   * letter; empty bands (word gaps / spare dividers) are skipped. Yields per-band
+   * labels + over-flags for drawing, the total count of written clusters, and
+   * `picks` — the (row, band, letter) triples apply() saves, so the canvas can
+   * never label a cluster differently from what Save stores.
+   */
+  const mapping = $derived.by(() => {
+    const label: (string | null)[][] = [];
+    const over: boolean[][] = [];
+    const picks: { r: number; k: number; ch: string }[] = [];
+    let li = 0; // next index into targetLetters
+    for (let r = 0; r < rows.length; r++) {
+      const segs = rowSegments[r];
+      label[r] = [];
+      over[r] = [];
+      for (let k = 0; k < segs.length; k++) {
+        if (segs[k].length) {
+          const beyond = li >= targetLetters.length;
+          const ch = beyond ? null : targetLetters[li];
+          label[r][k] = ch;
+          over[r][k] = beyond;
+          if (ch) picks.push({ r, k, ch });
+          li++;
+        } else {
+          label[r][k] = null;
+          over[r][k] = false;
+        }
+      }
+    }
+    return { label, over, picks, written: li };
+  });
+  const markedLetters = $derived(Math.min(mapping.written, neededLetters));
+  const allMarked = $derived(mapping.written >= neededLetters && neededLetters > 0);
+  // letters written past the end of the paragraph (over-count warning, mirrored in
+  // text so it is not signalled by red colour alone)
+  const extraLetters = $derived(Math.max(0, mapping.written - neededLetters));
+
+  // Save as soon as ≥1 letter is marked and nothing spills past the paragraph.
+  // This lets an incomplete paragraph save the letters captured so far — the
+  // unwritten tail is simply skipped on apply.
+  const canApply = $derived(markedLetters >= 1 && extraLetters === 0);
 
   // Text alternative for the otherwise-silent drawing canvas + an aria-live
   // status so screen-reader users hear marking progress and the over-count warning.
@@ -57,20 +132,18 @@
     `Handwriting canvas (Apple Pencil only). ${
       hasDrawn
         ? `${markedLetters} of ${neededLetters} letters marked.`
-        : "Empty — write the phrase here."
-    }${extraStrokes > 0 ? ` ${extraStrokes} extra strokes beyond the phrase.` : ""}`,
+        : "Empty — write the paragraph here."
+    }${extraLetters > 0 ? ` ${extraLetters} extra letters beyond the paragraph.` : ""}`,
   );
   const statusText = $derived(
     !hasDrawn
       ? ""
-      : extraStrokes > 0
-        ? `${markedLetters} of ${neededLetters} letters marked. ${extraStrokes} extra strokes beyond the phrase.`
+      : extraLetters > 0
+        ? `${markedLetters} of ${neededLetters} letters marked. ${extraLetters} extra letters beyond the paragraph.`
         : allMarked
           ? `All ${neededLetters} letters marked.`
           : `${markedLetters} of ${neededLetters} letters marked.`,
   );
-  // widen the writing area; ~70px per letter + 40px per word gap, min 900
-  const canvasW = $derived(`${Math.max(900, neededLetters * 70 + wordGaps * 40)}px`);
 
   // ---- this round (active pass) already has content? ----
   const activeHasContent = $derived(
@@ -78,11 +151,6 @@
       Object.values(cap.passes[cap.activePass]).some((s) => s?.length),
   );
 
-  function markLetters() {
-    dividers = proposeDividers(strokes, target);
-    tool = "divide";
-    redraw();
-  }
   function addRound() {
     newPass();
     clearAll();
@@ -90,16 +158,26 @@
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D | null = null;
-  let scroller: HTMLDivElement | undefined = $state();
-  let scrollable = $state(false);
-  function checkScrollable() {
-    if (scroller) scrollable = scroller.scrollWidth - scroller.clientWidth > 4;
+  let root: HTMLDivElement | undefined = $state();
+  let viewH = $state(0);
+
+  /**
+   * Size the Write view to exactly fill the gap between the top bar and the
+   * fixed bottom nav, so the page never scrolls. A non-scrolling page is what
+   * stops the writing surface from sliding under the Pencil (and means the
+   * canvas can swallow every touch, including a resting palm).
+   */
+  function sizeView() {
+    if (!root) return;
+    const top = root.getBoundingClientRect().top;
+    const navH = document.querySelector(".bottomnav")?.getBoundingClientRect().height ?? 64;
+    viewH = Math.max(320, window.innerHeight - top - navH);
   }
 
-  /** virtual canvas width (height maps to VIRT; uniform scale keeps aspect). */
+  /** virtual canvas width (the full height maps to VH; uniform scale keeps aspect). */
   function vWidth(): number {
     const r = canvas?.getBoundingClientRect();
-    return r && r.height ? (r.width / r.height) * VIRT : VIRT;
+    return r && r.height ? (r.width / r.height) * VH : VIRT;
   }
 
   function fit() {
@@ -110,35 +188,33 @@
     canvas.width = r.width * dpr;
     canvas.height = r.height * dpr;
     ctx = canvas.getContext("2d");
-    const s = (r.height * dpr) / VIRT;
-    ctx?.setTransform(s, 0, 0, s, 0, 0);
     redraw();
   }
 
-  function redraw() {
-    if (!ctx || !canvas) return;
-    const r = canvas.getBoundingClientRect();
-    const VW = vWidth();
-    const ink = canvasInk();
-    const px = VIRT / Math.max(1, r.height);
-    ctx.clearRect(0, 0, VW, VIRT);
+  /** Draw one row's bands, guides, labels, ink and dividers at vertical offset r*VIRT. */
+  function drawRow(r: number, VW: number, ink: ReturnType<typeof canvasInk>, px: number) {
+    if (!ctx) return;
+    const oy = r * VIRT;
+    const divs = [...rowDividers[r]].sort((a, b) => a - b);
+    const segs = rowSegments[r];
+    const labels = mapping.label[r] ?? [];
+    const overs = mapping.over[r] ?? [];
 
     // segment tint bands (alternating) between sorted divider boundaries
-    const bounds = [0, ...sortedDividers, VW];
+    const bounds = [0, ...divs, VW];
     for (let k = 0; k < bounds.length - 1; k++) {
-      const beyond = k >= target.length;
-      ctx.fillStyle = beyond ? ink.tintBeyond : k % 2 ? ink.tintOdd : ink.tintEven;
-      ctx.fillRect(bounds[k], 0, bounds[k + 1] - bounds[k], VIRT);
-      // target-char label near the top of each band (space tokens stay blank).
-      // Don't label the single full-width band before any dividers exist — a lone
-      // "t" floating in an empty canvas just reads as confusing.
-      const ch = target[k];
-      if (dividers.length > 0 && ch && ch !== " ") {
+      ctx.fillStyle = overs[k] ? ink.tintBeyond : k % 2 ? ink.tintOdd : ink.tintEven;
+      ctx.fillRect(bounds[k], oy, bounds[k + 1] - bounds[k], VIRT);
+      // label each WRITTEN band with the letter it maps to (computed from reading
+      // order, not the band's position), so the labels track what you actually
+      // wrote. Only shown once dividers exist; empty bands stay blank.
+      const ch = labels[k];
+      if (divs.length > 0 && ch) {
         ctx.fillStyle = ink.label;
         ctx.font = `${0.16 * VIRT}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.fillText(ch, (bounds[k] + bounds[k + 1]) / 2, 12 * px);
+        ctx.fillText(ch, (bounds[k] + bounds[k + 1]) / 2, oy + 12 * px);
       }
     }
 
@@ -146,51 +222,102 @@
     ctx.strokeStyle = ink.guide;
     ctx.lineWidth = px;
     ctx.beginPath();
-    ctx.moveTo(0, BASELINE_FRAC * VIRT);
-    ctx.lineTo(VW, BASELINE_FRAC * VIRT);
+    ctx.moveTo(0, oy + BASELINE_FRAC * VIRT);
+    ctx.lineTo(VW, oy + BASELINE_FRAC * VIRT);
     ctx.stroke();
     ctx.setLineDash([4 * px, 4 * px]);
     for (const f of [XHEIGHT_FRAC, CAP_FRAC]) {
       ctx.beginPath();
-      ctx.moveTo(0, f * VIRT);
-      ctx.lineTo(VW, f * VIRT);
+      ctx.moveTo(0, oy + f * VIRT);
+      ctx.lineTo(VW, oy + f * VIRT);
       ctx.stroke();
     }
     ctx.setLineDash([]);
 
-    // ink — strokes in a band beyond the target count are warned (red)
-    for (let k = 0; k < segments.length; k++) {
-      ctx.fillStyle = k >= target.length ? ink.over : ink.ink;
-      for (const s of segments[k]) {
+    // ink — strokes (stored in global coords); a cluster mapped past the end of
+    // the paragraph is warned (red)
+    for (let k = 0; k < segs.length; k++) {
+      ctx.fillStyle = overs[k] ? ink.over : ink.ink;
+      for (const s of segs[k]) {
         const p = path(s);
         if (p) ctx.fill(p);
       }
     }
+
+    // letter boundaries — thin guide lines only (auto-derived; not interactive)
+    ctx.strokeStyle = ink.divider;
+    ctx.lineWidth = px;
+    for (const dx of divs) {
+      ctx.beginPath();
+      ctx.moveTo(dx, oy);
+      ctx.lineTo(dx, oy + VIRT);
+      ctx.stroke();
+    }
+  }
+
+  function redraw() {
+    if (!ctx || !canvas) return;
+    const r = canvas.getBoundingClientRect();
+    if (!r.height) return;
+    // the transform depends on VH (row count), which can change without the
+    // canvas box resizing — recompute it here so it can never go stale
+    const dpr = window.devicePixelRatio || 1;
+    const s = (r.height * dpr) / VH;
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    const VW = vWidth();
+    const ink = canvasInk();
+    const px = VH / Math.max(1, r.height);
+    ctx.clearRect(0, 0, VW, VH);
+    for (let ri = 0; ri < rows.length; ri++) drawRow(ri, VW, ink, px);
     if (active) {
       ctx.fillStyle = ink.ink;
       const p = path(active);
       if (p) ctx.fill(p);
     }
+    drawNextGhost(VW, ink);
+  }
 
-    // dividers (vertical lines with a small ✕ affordance at the top)
-    ctx.strokeStyle = ink.divider;
-    ctx.lineWidth = 2 * px;
-    ctx.fillStyle = ink.divider;
-    ctx.font = `${0.12 * VIRT}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (const dx of dividers) {
-      ctx.beginPath();
-      ctx.moveTo(dx, 0);
-      ctx.lineTo(dx, VIRT);
-      ctx.stroke();
-      ctx.fillText("✕", dx, 0.07 * VIRT);
+  /**
+   * Faint ghost of the NEXT letter to write, placed just after the last letter on
+   * the active row (wrapping to the next row when it runs out of width). This is
+   * the "what's coming" cue — the band labels show what you've already written.
+   */
+  function drawNextGhost(VW: number, ink: ReturnType<typeof canvasInk>) {
+    if (!ctx) return;
+    const idx = mapping.written;
+    if (idx >= targetLetters.length) return; // whole paragraph captured
+    const ch = targetLetters[idx];
+
+    const startX = 0.04 * VW;
+    let gx = startX;
+    let grow = 0;
+    let r = rows.length - 1; // last row with any ink (if any)
+    while (r >= 0 && !rowStrokes[r].length) r--;
+    if (r >= 0) {
+      let maxX = 0;
+      for (const s of rowStrokes[r]) for (const p of s) if (p.x > maxX) maxX = p.x;
+      gx = maxX + 0.3 * VIRT; // about one letter-advance past the last ink
+      grow = r;
+      if (gx > VW - 0.12 * VIRT && r < rows.length - 1) {
+        gx = startX; // no room left on this row — prompt at the start of the next
+        grow = r + 1;
+      }
     }
+    gx = Math.min(gx, VW - 0.3 * VIRT); // last row full — keep the cue on-canvas
+
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = ink.ink;
+    ctx.font = `italic ${0.42 * VIRT}px "Shantell Sans", cursive`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(ch, gx, grow * VIRT + BASELINE_FRAC * VIRT);
+    ctx.restore();
   }
 
   function pos(e: PointerEvent): Pt {
     const r = canvas.getBoundingClientRect();
-    const k = VIRT / r.height;
+    const k = VH / r.height;
     return {
       x: (e.clientX - r.left) * k,
       y: (e.clientY - r.top) * k,
@@ -203,7 +330,6 @@
   function down(e: PointerEvent) {
     if (e.pointerType === "pen") ui.penSeen = true;
     if (!allowed(e)) return;
-    if (tool === "divide") return divideDown(e);
     if (tool === "erase") {
       e.preventDefault();
       canvas.setPointerCapture(e.pointerId);
@@ -219,7 +345,6 @@
     redraw();
   }
   function move(e: PointerEvent) {
-    if (tool === "divide") return divideMove(e);
     if (tool === "erase") {
       if (erasing && allowed(e)) {
         e.preventDefault();
@@ -234,72 +359,21 @@
     redraw();
   }
   function end(e: PointerEvent) {
-    if (tool === "divide") return divideUp(e);
     if (tool === "erase") {
       erasing = false;
       return;
     }
     if (!active || e.pointerId !== activeId) return;
     e.preventDefault();
-    if (active.length > 1) strokes = [...strokes, active];
+    if (active.length > 1) strokes = [...strokes, active]; // boundaries re-derive automatically
     active = null;
     activeId = null;
     redraw();
   }
 
-  // ---- divide tool: tap to drop, drag to adjust, tap a divider to remove ----
-  const NEAR = 30; // virtual-unit hit radius for grabbing/removing a divider
-  function nearestDivider(vx: number): number {
-    let best = -1,
-      bestD = NEAR;
-    dividers.forEach((dx, i) => {
-      const d = Math.abs(dx - vx);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    });
-    return best;
-  }
-  function divideDown(e: PointerEvent) {
-    if (drag) return; // already adjusting a divider — ignore a second (palm) pointer
-    e.preventDefault();
-    canvas.setPointerCapture(e.pointerId);
-    const vx = pos(e).x;
-    const i = nearestDivider(vx);
-    if (i >= 0) drag = { idx: i, moved: false, created: false, id: e.pointerId };
-    else {
-      dividers = [...dividers, vx];
-      drag = { idx: dividers.length - 1, moved: false, created: true, id: e.pointerId };
-    }
-    redraw();
-  }
-  function divideMove(e: PointerEvent) {
-    if (!drag || e.pointerId !== drag.id) return;
-    e.preventDefault();
-    const vx = pos(e).x;
-    const arr = [...dividers];
-    if (Math.abs(vx - arr[drag.idx]) > 8) drag.moved = true;
-    arr[drag.idx] = vx;
-    dividers = arr;
-    redraw();
-  }
-  function divideUp(e: PointerEvent) {
-    if (!drag || e.pointerId !== drag.id) return;
-    e.preventDefault();
-    if (!drag.moved && !drag.created) dividers = dividers.filter((_, k) => k !== drag!.idx); // tap = remove
-    drag = null;
-    redraw();
-  }
-
-  // ---- erase tool: tap/scrub removes the nearest divider or stroke ----
+  // ---- erase tool: tap/scrub removes the nearest stroke ----
   const ERASE_R = 60; // virtual-unit hit radius for grabbing a stroke
   function eraseAt(p: Pt) {
-    const di = nearestDivider(p.x); // dividers win when tapped right on the line
-    if (di >= 0) {
-      dividers = dividers.filter((_, k) => k !== di);
-      return;
-    }
     let best = -1,
       bestD = ERASE_R;
     strokes.forEach((s, i) => {
@@ -319,150 +393,157 @@
     activeId = null;
     erasing = false;
     strokes = [];
-    dividers = [];
     redraw();
   }
+  function pickFullSet() {
+    custom = "";
+    committedCustom = "";
+    useFullSet = true;
+    showPhrases = false;
+    clearAll();
+  }
   function pickPrompt(i: number) {
-    useCustom = false;
+    custom = "";
+    committedCustom = "";
+    useFullSet = false;
     promptIdx = i;
     showPhrases = false;
     clearAll();
   }
   function onCustom(e: Event) {
-    custom = (e.target as HTMLInputElement).value;
-    useCustom = custom.trim().length > 0;
+    custom = (e.target as HTMLTextAreaElement).value;
   }
+  // Committing (blur) is the only moment rows may change, and it always clears
+  // the ink — existing clusters must never be re-zipped onto a different
+  // paragraph, or Save would store them under the wrong letters.
   function commitCustom() {
-    if (useCustom) {
-      showPhrases = false;
-      clearAll();
-    }
+    if (custom === committedCustom) return;
+    committedCustom = custom;
+    if (useCustom) showPhrases = false;
+    clearAll();
   }
   function apply() {
     if (!canApply) return;
-    const segs = segments.map((s) => normalizeSegmentToCell(s, G));
-    applySentence(target, segs);
-    // round model: keep the SAME phrase; clear the canvas and surface "Add another round".
+    // Store exactly what the labels show: mapping already zipped each written
+    // cluster onto its target letter. Each cluster is normalized with ITS row's
+    // baseline.
+    applySentence(
+      mapping.picks.map((p) => p.ch),
+      mapping.picks.map((p) => normalizeSegmentToCell(rowSegments[p.r][p.k], G(p.r))),
+    );
+    // round model: keep the SAME paragraph; clear the canvas and surface "Add another round".
     clearAll();
     tool = "write";
   }
-  // redraw whenever inputs change
+  // redraw whenever inputs change (rowDividers/rowSegments/mapping all derive from these)
   $effect(() => {
     strokes;
-    dividers;
-    target;
+    rows;
     cap.pen.size;
     cap.pen.thinning;
     redraw();
   });
-  // re-fit when the Write view is shown again (it stays mounted-but-hidden while
-  // on the Grid tab, where the canvas measures 0 and can't be drawn into)
+  // re-measure + re-fit when the Write view is shown again (it stays
+  // mounted-but-hidden while on the Grid tab, where it measures 0)
   $effect(() => {
-    if (cap.mode === "sentence") queueMicrotask(() => fit());
+    cap.mode;
+    if (cap.mode === "sentence") queueMicrotask(() => sizeView());
   });
+  // keep the view sized to the viewport; the canvas re-fits via its ResizeObserver
   $effect(() => {
-    fit();
-    const ro = new ResizeObserver(() => {
-      fit();
-      checkScrollable();
-    });
+    sizeView();
+    const onResize = () => sizeView();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    const ro = new ResizeObserver(() => fit());
     if (canvas) ro.observe(canvas);
-    return () => ro.disconnect();
-  });
-  // recompute the horizontal-scroll affordance when the required width changes
-  $effect(() => {
-    canvasW;
-    checkScrollable();
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      ro.disconnect();
+    };
   });
 </script>
 
-<div class="phrase">
-  {#if showPhrases}
-    <div class="prompts">
-      {#each PROMPTS as pr, i (pr.id)}
-        <button class="chip" class:on={!useCustom && promptIdx === i} onclick={() => pickPrompt(i)}
-          >{pr.text}</button
+<div class="write" bind:this={root} style="height: {viewH}px">
+  <div class="phrase">
+    {#if showPhrases}
+      <div class="prompts">
+        <button class="chip" class:on={useFullSet && !useCustom} onclick={pickFullSet}
+          >full set</button
         >
-      {/each}
-      <input
-        class="custom"
-        type="text"
-        placeholder="custom phrase…"
-        value={custom}
-        oninput={onCustom}
-        onkeydown={(e) => e.key === "Enter" && commitCustom()}
-        onblur={commitCustom}
-      />
-    </div>
-  {:else}
-    <span class="ref-line">{phraseText}</span>
-    <button class="quiet" onclick={() => (showPhrases = true)}>Change phrase</button>
-  {/if}
-</div>
-
-<div
-  class="canvas-scroll"
-  style="--canvas-w: {canvasW};"
-  bind:this={scroller}
-  onscroll={checkScrollable}
->
-  <canvas
-    bind:this={canvas}
-    aria-label={canvasLabel}
-    onpointerdown={down}
-    onpointermove={move}
-    onpointerup={end}
-    onpointercancel={end}
-    onpointerleave={end}
-  ></canvas>
-</div>
-{#if scrollable}
-  <p class="scroll-cue"><span aria-hidden="true">↔</span> Scroll sideways to see the whole line</p>
-{/if}
-
-<div class="sr-only" aria-live="polite">{statusText}</div>
-
-{#if hasDrawn}
-  <div class="bar">
-    <div class="tools">
-      <button class:on={tool === "write"} onclick={() => (tool = "write")}>✎ write</button>
-      <button class:on={tool === "divide"} onclick={() => (tool = "divide")}>| divide</button>
-      <button class:on={tool === "erase"} onclick={() => (tool = "erase")}>⌫ erase</button>
-    </div>
-    <span class="spacer"></span>
-    <span class="count" class:ok={allMarked && extraStrokes === 0} class:warn={extraStrokes > 0}>
-      {#if extraStrokes > 0}
-        {extraStrokes} extra {extraStrokes === 1 ? "stroke" : "strokes"} beyond the phrase
-      {:else if allMarked}All {neededLetters} letters marked{:else}{markedLetters} of {neededLetters}
-        letters marked{/if}
-    </span>
-    <button onclick={clearAll}>clear</button>
-    {#if dividers.length === 0}
-      <button class="primary" onclick={markLetters}>Mark the letters</button>
+        {#each PROMPTS as pr, i (pr.id)}
+          <button
+            class="chip"
+            class:on={!useCustom && !useFullSet && promptIdx === i}
+            onclick={() => pickPrompt(i)}>{pr.text}</button
+          >
+        {/each}
+        <textarea
+          class="custom"
+          rows="3"
+          placeholder="custom paragraph — one line per row…"
+          value={custom}
+          oninput={onCustom}
+          onblur={commitCustom}
+        ></textarea>
+      </div>
     {:else}
-      <button onclick={markLetters} title="Auto-place the dividers again">Re-mark</button>
-      <button class="primary" disabled={!canApply} onclick={apply}>Save this round</button>
+      <span class="ref-line">{phraseText}</span>
+      <button class="quiet" onclick={() => (showPhrases = true)}>Change paragraph</button>
     {/if}
   </div>
-{:else if activeHasContent}
-  <div class="bar">
-    <span class="spacer"></span>
-    <button class="primary" onclick={addRound}>Add another round</button>
-  </div>
-{/if}
 
-<p class="hint">
-  {#if !hasDrawn}
-    Write the whole sentence in print — lift the Pencil between letters.
-  {:else if !allMarked}
-    Tap <b>Mark the letters</b> to auto-place dividers, then nudge any boundary with the
-    <b>divide</b>
-    tool. No room for the whole phrase? <b>Save this round</b> keeps the letters marked so far — write
-    the rest in another round.
-  {:else}
-    Looks good — tap <b>Save this round</b> to store these letters, then add another round.
+  <div class="canvas-wrap">
+    <canvas
+      bind:this={canvas}
+      aria-label={canvasLabel}
+      onpointerdown={down}
+      onpointermove={move}
+      onpointerup={end}
+      onpointercancel={end}
+      onpointerleave={end}
+    ></canvas>
+  </div>
+
+  <div class="sr-only" aria-live="polite">{statusText}</div>
+
+  {#if hasDrawn}
+    <div class="bar">
+      <div class="tools">
+        <button class:on={tool === "write"} onclick={() => (tool = "write")}>✎ write</button>
+        <button class:on={tool === "erase"} onclick={() => (tool = "erase")}>⌫ erase</button>
+      </div>
+      <span class="spacer"></span>
+      <span class="count" class:ok={allMarked && extraLetters === 0} class:warn={extraLetters > 0}>
+        {#if extraLetters > 0}
+          {extraLetters} extra {extraLetters === 1 ? "letter" : "letters"} beyond the paragraph
+        {:else if allMarked}All {neededLetters} letters marked{:else}{markedLetters} of {neededLetters}
+          letters marked{/if}
+      </span>
+      <button onclick={clearAll}>clear</button>
+      <button class="primary" disabled={!canApply} onclick={apply}>Save this round</button>
+    </div>
+  {:else if activeHasContent}
+    <div class="bar">
+      <span class="spacer"></span>
+      <button class="primary" onclick={addRound}>Add another round</button>
+    </div>
   {/if}
-</p>
+
+  <p class="hint">
+    {#if !hasDrawn}
+      Write the letters <b>in order</b>, in print — lift the Pencil between letters. Wrap to the
+      next baseline whenever you like; you don't have to match the reference's line breaks.
+    {:else if !allMarked}
+      The faint letter shows what to write next; each finished band is labelled with the letter it
+      became. Mis-split? Tap <b>erase</b> and rewrite that letter with a clearer gap.
+      <b>Save this round</b> keeps the letters marked so far.
+    {:else}
+      Looks good — tap <b>Save this round</b> to store these letters, then add another round.
+    {/if}
+  </p>
+</div>
 
 <style>
   .phrase {
@@ -470,14 +551,16 @@
     gap: 12px;
     align-items: baseline;
     flex-wrap: wrap;
-    padding: 14px clamp(14px, 4vw, 28px) 4px;
+    padding: 10px clamp(14px, 4vw, 28px) 4px;
   }
   .ref-line {
     font-family: "Shantell Sans", cursive;
-    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    font-size: 1rem;
     letter-spacing: 0.02em;
-    color: var(--ink);
+    color: var(--ink-soft);
     font-weight: 500;
+    white-space: pre-line; /* honour the per-line breaks in the paragraph */
+    line-height: 1.25;
   }
   .quiet {
     font: inherit;
@@ -543,7 +626,9 @@
     padding: 6px 11px;
     border: 1px solid var(--rule);
     border-radius: 11px;
-    min-width: 140px;
+    min-width: 240px;
+    flex: 1 1 240px;
+    resize: vertical;
     background: var(--paper-deep);
     color: var(--ink);
   }
@@ -663,42 +748,38 @@
     opacity: 0.4;
     cursor: default;
   }
-  .canvas-scroll {
-    position: relative;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-x;
+  /* The Write view fills the space between the top bar and the bottom nav and
+     never scrolls — that is what keeps the writing surface from sliding under
+     the Pencil (and lets the canvas itself swallow every touch). */
+  .write {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .canvas-wrap {
+    flex: 1;
+    min-height: 0; /* allow the canvas to shrink to fit instead of forcing page scroll */
     margin: 0 clamp(14px, 4vw, 28px);
   }
   canvas {
     display: block;
-    width: max(100%, var(--canvas-w));
-    height: clamp(90px, 13vh, 130px);
+    width: 100%;
+    height: 100%;
     background: var(--canvas-bg);
     border: 1px solid var(--rule);
     border-radius: 13px;
+    /* swallow ALL gestures (pen draws, palm/finger do nothing) — no scrolling */
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
   }
-  .scroll-cue {
-    font-family: "Bricolage Grotesque", system-ui, sans-serif;
-    color: var(--ink-soft);
-    font-size: 0.76rem;
-    font-weight: 600;
-    padding: 4px clamp(14px, 4vw, 28px) 0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
   .hint {
     color: var(--ink-soft);
-    font-size: 0.82rem;
-    line-height: 1.5;
+    font-size: 0.8rem;
+    line-height: 1.45;
     max-width: 80ch;
-    padding: 10px clamp(14px, 4vw, 28px) 84px;
+    padding: 8px clamp(14px, 4vw, 28px) 10px;
   }
   .hint b {
     color: var(--ink);

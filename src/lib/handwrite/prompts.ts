@@ -9,6 +9,8 @@
  * space tokens are expected to be empty and are skipped on Apply, so the natural
  * gap between words has a home instead of throwing off the letter count.
  */
+import type { CharDef } from "$lib/handwrite/charsets";
+
 export interface Prompt {
   id: string;
   group: string;
@@ -20,6 +22,32 @@ export interface Prompt {
 /** Tokens a prompt expects: each char, with whitespace runs collapsed to a single space. */
 export function promptChars(text: string): string[] {
   return [...text.trim().replace(/\s+/g, " ")];
+}
+
+/**
+ * Lay the active character set out into the rows of tokens used by multiline
+ * capture — one short line per `string[]`. Glyphs are grouped into runs of
+ * `groupEvery` separated by a space token (a comfortable pen-lift gap that also
+ * gives the divider proposer a word-boundary anchor), and a row holds up to
+ * `perLine` glyphs (spaces don't count toward the glyph budget). This is what
+ * generates the "full set" default paragraph from the enabled groups.
+ */
+export function coverageRows(chars: CharDef[], perLine = 15, groupEvery = 5): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let inRow = 0; // glyphs placed in the current row
+  for (const def of chars) {
+    if (inRow > 0 && inRow % groupEvery === 0) row.push(" ");
+    row.push(def.char);
+    inRow++;
+    if (inRow >= perLine) {
+      rows.push(row);
+      row = [];
+      inRow = 0;
+    }
+  }
+  if (row.length) rows.push(row);
+  return rows;
 }
 
 const p = (id: string, group: string, text: string): Prompt => ({

@@ -16,6 +16,12 @@ export function strokeCentroidX(s: Stroke): number {
   return s.reduce((sum, p) => sum + p.x, 0) / s.length;
 }
 
+/** Mean y of a stroke's points (its vertical centre) — used to bucket a stroke into its row. */
+export function strokeCentroidY(s: Stroke): number {
+  if (!s.length) return 0;
+  return s.reduce((sum, p) => sum + p.y, 0) / s.length;
+}
+
 /**
  * Bucket whole strokes into segments delimited by vertical dividers.
  * `dividerXs` need not be sorted. Returns `dividerXs.length + 1` segments
@@ -68,11 +74,15 @@ export function proposeDividers(strokes: Stroke[], target: string[]): number[] {
 
   // 2. typical inter-stroke gap (median of positive gaps); within-letter strokes
   //    overlap (gap ≤ 0), so a fraction of this cleanly separates the two cases.
+  //    The small absolute floor (~0.06·VIRT) keeps the threshold stable while
+  //    only a stroke or two exist and the median is still tiny/unstable, and
+  //    absorbs slightly-offset dots/crossbars (t, i, j) — but stays well under a
+  //    tight writer's real inter-letter gap, so distinct letters don't fuse.
   const raw: number[] = [];
   for (let i = 0; i < ext.length - 1; i++) raw.push(ext[i + 1].min - ext[i].max);
   const positive = raw.filter((g) => g > 0).sort((a, b) => a - b);
   const median = positive.length ? positive[Math.floor(positive.length / 2)] : 0;
-  const mergeGap = Math.max(median * 0.55, 1);
+  const mergeGap = Math.max(median * 0.55, VIRT * 0.06);
 
   // 3. merge overlapping / near-touching strokes into per-letter clusters
   const clusters: { min: number; max: number }[] = [{ min: ext[0].min, max: ext[0].max }];
@@ -82,13 +92,32 @@ export function proposeDividers(strokes: Stroke[], target: string[]): number[] {
     else clusters.push({ min: ext[i].min, max: ext[i].max });
   }
 
+  const letterIdx: number[] = [];
+  for (let i = 0; i < target.length; i++) if (target[i] !== " ") letterIdx.push(i);
+
+  // 3b. the row can't hold more letters than the target — if the threshold
+  //     over-split (a widely-detached crossbar/dot), fuse the smallest gaps
+  //     until the count fits. Erring low above + healing here beats a big gap
+  //     floor: a wrong merge has no recourse, a wrong split self-corrects.
+  while (clusters.length > letterIdx.length && letterIdx.length > 0) {
+    let bi = 1;
+    let bg = Infinity;
+    for (let i = 1; i < clusters.length; i++) {
+      const g = clusters[i].min - clusters[i - 1].max;
+      if (g < bg) {
+        bg = g;
+        bi = i;
+      }
+    }
+    clusters[bi - 1].max = Math.max(clusters[bi - 1].max, clusters[bi].max);
+    clusters.splice(bi, 1);
+  }
+
   // Map clusters positionally onto the FIRST clusters.length letters of the
   // phrase, so an incomplete line just covers a prefix (no padding to the full
   // phrase — that's what lets a partial round still be saved). Between two
   // written letters: one divider, plus one extra per word-space that sits
   // between them (so the space gets its own empty band).
-  const letterIdx: number[] = [];
-  for (let i = 0; i < target.length; i++) if (target[i] !== " ") letterIdx.push(i);
 
   const out: number[] = [];
   for (let j = 0; j < clusters.length - 1; j++) {
