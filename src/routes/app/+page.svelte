@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Cell from "$lib/components/Cell.svelte";
-  import SentenceCanvas from "$lib/components/SentenceCanvas.svelte";
-  import BottomNav from "$lib/components/BottomNav.svelte";
-  import TopBar from "$lib/components/TopBar.svelte";
-  import ProfileSheet from "$lib/components/ProfileSheet.svelte";
-  import PenSheet from "$lib/components/PenSheet.svelte";
-  import FirstRunOverlay from "$lib/components/FirstRunOverlay.svelte";
-  import { CHAR_GROUPS } from "$lib/handwrite/charsets";
-  import { cap, load, save, newPass, toggleGroup, doneInPass, chars } from "$lib/capture.svelte";
+  import Cell from "#lib/components/Cell.svelte";
+  import SentenceCanvas from "#lib/components/SentenceCanvas.svelte";
+  import BottomNav from "#lib/components/BottomNav.svelte";
+  import TopBar from "#lib/components/TopBar.svelte";
+  import ProfileSheet from "#lib/components/ProfileSheet.svelte";
+  import PenSheet from "#lib/components/PenSheet.svelte";
+  import FirstRunOverlay from "#lib/components/FirstRunOverlay.svelte";
+  import { CHAR_GROUPS } from "#lib/handwrite/charsets.js";
+  import { cap, load, save, newPass, toggleGroup, doneInPass, chars } from "#lib/capture.svelte.js";
 
   const SEEN_KEY = "handwrite.seen.v1";
 

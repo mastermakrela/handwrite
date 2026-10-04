@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
-  import { strokePath as path } from "$lib/handwrite/capture/stroke-path";
+  import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "#lib/handwrite/capture/space.js";
+  import { strokePath as path } from "#lib/handwrite/capture/stroke-path.js";
   import {
     assignStrokesToSegments,
     normalizeSegmentToCell,
     proposeDividers,
     strokeCentroidY,
-  } from "$lib/handwrite/capture/segment";
-  import { PROMPTS, promptChars, coverageRows } from "$lib/handwrite/prompts";
-  import { canvasInk } from "$lib/theme.svelte";
+  } from "#lib/handwrite/capture/segment.js";
+  import { PROMPTS, promptChars, coverageRows } from "#lib/handwrite/prompts.js";
+  import { canvasInk } from "#lib/theme.svelte.js";
   import {
     ui,
     applySentence,
@@ -17,7 +17,7 @@
     chars,
     type Stroke,
     type Pt,
-  } from "$lib/capture.svelte";
+  } from "#lib/capture.svelte.js";
 
   // ---- prompt selection ----
   // The target is a list of LINES, each a list of tokens (chars; " " = word gap).
@@ -485,8 +485,7 @@
           placeholder="custom paragraph — one line per row…"
           value={custom}
           oninput={onCustom}
-          onblur={commitCustom}
-        ></textarea>
+          onblur={commitCustom}></textarea>
       </div>
     {:else}
       <span class="ref-line">{phraseText}</span>

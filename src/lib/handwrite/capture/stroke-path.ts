@@ -1,5 +1,5 @@
 import { getStroke } from "perfect-freehand";
-import { penOptions, type Stroke } from "$lib/capture.svelte";
+import { penOptions, type Stroke } from "#lib/capture.svelte.js";
 
 // Canvases redraw on every pointermove, and re-running getStroke for each
 // committed stroke is the hot cost, so cache the Path2D per stroke. Committed

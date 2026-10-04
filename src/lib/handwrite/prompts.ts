@@ -9,7 +9,7 @@
  * space tokens are expected to be empty and are skipped on Apply, so the natural
  * gap between words has a home instead of throwing off the letter count.
  */
-import type { CharDef } from "$lib/handwrite/charsets";
+import type { CharDef } from "#lib/handwrite/charsets.js";
 
 export interface Prompt {
   id: string;

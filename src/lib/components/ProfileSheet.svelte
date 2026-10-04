@@ -1,13 +1,13 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { modal } from "$lib/actions/modal";
+  import { modal } from "#lib/actions/modal.js";
   import {
     profiles,
     createProfile,
     switchProfile,
     renameProfile,
     deleteProfile,
-  } from "$lib/capture.svelte";
+  } from "#lib/capture.svelte.js";
 
   let { onClose, onShowIntro }: { onClose: () => void; onShowIntro: () => void } = $props();
 

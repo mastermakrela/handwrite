@@ -1,4 +1,6 @@
+import adapter from "@sveltejs/adapter-cloudflare";
 import { sveltekit } from "@sveltejs/kit/vite";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig, type PluginOption } from "vite";
 
 /**
@@ -24,5 +26,9 @@ const browserLogger = (): PluginOption => ({
 });
 
 export default defineConfig({
-  plugins: [sveltekit(), browserLogger()],
+  plugins: [
+    // Single-page app deployed to Cloudflare Workers (static assets, no SSR).
+    sveltekit({ preprocess: vitePreprocess(), adapter: adapter() }),
+    browserLogger(),
+  ],
 });

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { cap, save, roundsDone } from "$lib/capture.svelte";
+  import { cap, save, roundsDone } from "#lib/capture.svelte.js";
 
   const onPreview = $derived(page.url.pathname === "/app/preview");
   const previewUnlocked = $derived(roundsDone() >= 1);

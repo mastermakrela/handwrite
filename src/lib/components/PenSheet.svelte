@@ -1,8 +1,8 @@
 <script lang="ts">
   import { getStroke } from "perfect-freehand";
-  import { modal } from "$lib/actions/modal";
-  import { canvasInk } from "$lib/theme.svelte";
-  import { cap, save, penOptions, DEFAULT_PEN, type Pen } from "$lib/capture.svelte";
+  import { modal } from "#lib/actions/modal.js";
+  import { canvasInk } from "#lib/theme.svelte.js";
+  import { cap, save, penOptions, DEFAULT_PEN, type Pen } from "#lib/capture.svelte.js";
 
   let { onClose }: { onClose: () => void } = $props();
 

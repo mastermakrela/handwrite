@@ -10,8 +10,8 @@
  * Pure-data parts (buildFontBytes/buildGlyphs) run in Node/bun for headless tests;
  * the FontFace helpers are browser-only (guard `document`/`FontFace` at call site).
  */
-import type { CharDef } from "$lib/handwrite/charsets";
-import type { Pass } from "$lib/capture.svelte";
+import type { CharDef } from "#lib/handwrite/charsets.js";
+import type { Pass } from "#lib/capture.svelte.js";
 import { glyphsFromPasses, type BuildOpts } from "./glyph-from-passes";
 import { buildFont, fontToUint8Array } from "./opentype-builder";
 import { DEFAULT_METRICS, type GlyphDef } from "../types";

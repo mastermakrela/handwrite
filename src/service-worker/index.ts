@@ -1,17 +1,21 @@
-/// <reference types="@sveltejs/kit" />
-/// <reference lib="webworker" />
-
 /**
  * Offline-capable service worker so handwrite installs and runs as a PWA.
  * Precaches the built app shell + static assets, then serves cache-first for
  * those and network-first (with cache fallback) for everything else — including
  * SPA navigations, which fall back to the cached shell when offline.
  */
-import { build, files, version } from "$service-worker";
+import { self as sw } from "$app/service-worker";
+import { version } from "$app/env";
+import { immutable, assets } from "$app/manifest";
+import { asset } from "$app/paths";
 
-const sw = self as unknown as ServiceWorkerGlobalScope;
 const CACHE = `handwrite-${version}`;
-const PRECACHE = [...build, ...files];
+// manifest paths are relative to the base path (where this worker lives) —
+// turn them into absolute pathnames so `fetch` can match `url.pathname`
+const PRECACHE = [
+  ...immutable.map((file) => new URL(file.path, sw.location.href).pathname),
+  ...assets.map((file) => asset(file.path)),
+];
 
 sw.addEventListener("install", (event) => {
   event.waitUntil(
