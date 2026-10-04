@@ -1,18 +1,18 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
-  import TopBar from "$lib/components/TopBar.svelte";
-  import BottomNav from "$lib/components/BottomNav.svelte";
-  import ProfileSheet from "$lib/components/ProfileSheet.svelte";
-  import FirstRunOverlay from "$lib/components/FirstRunOverlay.svelte";
-  import FontLab from "$lib/components/FontLab.svelte";
-  import { CHAR_GROUPS } from "$lib/handwrite/charsets";
+  import TopBar from "#lib/components/TopBar.svelte";
+  import BottomNav from "#lib/components/BottomNav.svelte";
+  import ProfileSheet from "#lib/components/ProfileSheet.svelte";
+  import FirstRunOverlay from "#lib/components/FirstRunOverlay.svelte";
+  import FontLab from "#lib/components/FontLab.svelte";
+  import { CHAR_GROUPS } from "#lib/handwrite/charsets.js";
   import {
     cap, load, save, chars, importPasses, roundsDone, fontBuildOptions,
-  } from "$lib/capture.svelte";
+  } from "#lib/capture.svelte.js";
   import {
     buildFontBytes, registerPreviewFace, disposePreviewFace, PREVIEW_FAMILY, type PreviewFace,
-  } from "$lib/handwrite/font/preview-font";
+  } from "#lib/handwrite/font/preview-font.js";
 
   const SEEN_KEY = "handwrite.seen.v1";
 

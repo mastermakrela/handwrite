@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
-  import { strokePath as path } from "$lib/handwrite/capture/stroke-path";
-  import { canvasInk } from "$lib/theme.svelte";
+  import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "#lib/handwrite/capture/space.js";
+  import { strokePath as path } from "#lib/handwrite/capture/stroke-path.js";
+  import { canvasInk } from "#lib/theme.svelte.js";
   import {
     cap,
     ui,
@@ -10,7 +10,7 @@
     onionStrokes,
     type Stroke,
     type Pt,
-  } from "$lib/capture.svelte";
+  } from "#lib/capture.svelte.js";
 
   let { char }: { char: string } = $props();
 

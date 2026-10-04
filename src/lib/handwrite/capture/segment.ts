@@ -8,7 +8,7 @@
  * existing font builder treats it identically to a grid-captured glyph.
  */
 import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC } from "./space";
-import type { Stroke } from "$lib/capture.svelte";
+import type { Stroke } from "#lib/capture.svelte.js";
 
 /** Mean x of a stroke's points (its horizontal centre). */
 export function strokeCentroidX(s: Stroke): number {

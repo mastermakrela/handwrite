@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cap, gotoPass, doneInPass, chars, profiles, roundsDone } from "$lib/capture.svelte";
+  import { cap, gotoPass, doneInPass, chars, profiles, roundsDone } from "#lib/capture.svelte.js";
 
   let {
     onOpenProfiles,

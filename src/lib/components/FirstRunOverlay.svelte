@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { modal } from "$lib/actions/modal";
+  import { modal } from "#lib/actions/modal.js";
   let { onDismiss }: { onDismiss: () => void } = $props();
 </script>
 

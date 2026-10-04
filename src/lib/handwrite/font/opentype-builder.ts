@@ -121,7 +121,10 @@ export function buildFont(spec: FontSpec): opentype.Font {
 function attachCaltGsub(font: opentype.Font, defs: GlyphDef[]): void {
   // name -> glyph index, across the final glyph order.
   const gid: Record<string, number> = {};
-  for (let i = 0; i < font.glyphs.length; i++) gid[font.glyphs.get(i).name] = i;
+  for (let i = 0; i < font.glyphs.length; i++) {
+    const name = font.glyphs.get(i).name;
+    if (name !== null) gid[name] = i;
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lookups: any[] = [];

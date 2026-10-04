@@ -3,7 +3,7 @@
  * cells: multiple passes (drafts) over the character set, an active pass, which
  * alphabet groups are enabled, and a target number of passes for variation.
  */
-import { activeChars, type CharDef } from "$lib/handwrite/charsets";
+import { activeChars, type CharDef } from "#lib/handwrite/charsets.js";
 
 export type Pt = { x: number; y: number; pressure: number };
 export type Stroke = Pt[];
