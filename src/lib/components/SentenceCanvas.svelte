@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { VIRT, BASELINE_FRAC, XHEIGHT_FRAC, CAP_FRAC } from "$lib/handwrite/capture/space";
   import { strokePath as path } from "$lib/handwrite/capture/stroke-path";
   import {
@@ -435,6 +436,15 @@
     clearAll();
     tool = "write";
   }
+  // The ink only means something for the paragraph it was written under (see
+  // commitCustom). The paragraph also changes behind our back — toggling a character
+  // group on the Grid tab, or switching profile — so drop the draft then too.
+  let draftPhrase: string | undefined;
+  $effect(() => {
+    const p = phraseText;
+    if (draftPhrase !== undefined && p !== draftPhrase) untrack(clearAll);
+    draftPhrase = p;
+  });
   // redraw whenever inputs change (rowDividers/rowSegments/mapping all derive from these)
   $effect(() => {
     strokes;
