@@ -28,11 +28,6 @@ const PUNCT_NAMES: Record<string, string> = {
   ";": "semicolon",
   "(": "parenleft",
   ")": "parenright",
-  "@": "at",
-  "/": "slash",
-  "&": "ampersand",
-  "#": "numbersign",
-  "%": "percent",
 };
 const DIGIT_NAMES = [
   "zero",

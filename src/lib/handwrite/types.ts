@@ -12,11 +12,6 @@
  *   - units are font units within `unitsPerEm` (1000 for the CFF/OTF path)
  */
 
-export interface Vec2 {
-  x: number;
-  y: number;
-}
-
 /** A single drawing command. Mirrors SVG / opentype.js path ops. */
 export type PathCommand =
   | { type: "M"; x: number; y: number }
@@ -31,15 +26,6 @@ export type PathCommand =
  * contours with opposite winding (filled correctly by the non-zero rule).
  */
 export type GlyphOutline = PathCommand[];
-
-/** A single captured rendition of a character (one of possibly several). */
-export interface GlyphSample {
-  char: string;
-  codepoint: number;
-  outline: GlyphOutline;
-  advanceWidth: number;
-  source: "draw" | "photo";
-}
 
 /**
  * A character in the font, with one OR MORE alternate outlines.
