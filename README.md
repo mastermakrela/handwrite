@@ -15,6 +15,21 @@ Turn your **real handwriting** into a usable Unicode font (`.otf` / `.ttf` / `.w
 2. **Vectorize** each glyph into the Bézier outlines fonts are made of.
 3. **Assemble** a real font file, with natural per-letter variation, that works everywhere.
 
+## The app
+
+A SvelteKit single-page app (no SSR) in `src/`, served as static assets by a Cloudflare Worker at
+<https://handwrite.mastermakrela.com>. Strokes and profiles live in the browser's `localStorage`; nothing is uploaded.
+
+```bash
+bun install
+bun run dev      # vite dev --host
+bun run build    # adapter-cloudflare -> .svelte-kit/cloudflare
+bun run lint     # oxfmt --check && oxlint
+bun run test     # headless smoke scripts in app/*-smoke.ts
+```
+
+Routes: `/` landing page, `/app` capture (Write / Grid), `/app/preview` font preview and `.otf` export.
+
 ## Proofs (run them)
 
 ```bash
@@ -47,6 +62,8 @@ src/lib/handwrite/        portable, framework-agnostic core (the future app impo
   types.ts                shared GlyphOutline/FontSpec data model (both ingest modes target it)
   font/opentype-builder.ts  FontSpec -> opentype.js Font -> bytes (browser)
   capture/stroke.ts       pointer strokes -> perfect-freehand outline -> normalized glyph
+src/routes, src/lib/components   the SvelteKit app (capture UI, preview, landing page)
+app/                      older single-file capture app (`legacy:*` scripts) and the smoke scripts behind `bun run test`
 proofs/                   runnable feasibility proofs + fontTools validator
 docs/                     PLAN.md, ARCHITECTURE.md, RESEARCH.md, report.html
 ```
