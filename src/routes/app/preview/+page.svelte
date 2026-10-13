@@ -8,8 +8,9 @@
   import FontLab from "$lib/components/FontLab.svelte";
   import { CHAR_GROUPS } from "$lib/handwrite/charsets";
   import {
-    cap, load, save, chars, importPasses, roundsDone, fontBuildOptions,
+    cap, ui, load, save, chars, importPasses, roundsDone, fontBuildOptions,
   } from "$lib/capture.svelte";
+  import { isPassList } from "$lib/handwrite/font/glyph-from-passes";
   import {
     buildFontBytes, registerPreviewFace, disposePreviewFace, PREVIEW_FAMILY, type PreviewFace,
   } from "$lib/handwrite/font/preview-font";
@@ -32,7 +33,7 @@
   // signature that changes whenever stroke data changes (E.5)
   const sig = $derived(
     JSON.stringify(cap.passes.map((p) => Object.keys(p).sort())) +
-      ":" + roundsDone() + ":" + JSON.stringify(cap.font),
+      ":" + roundsDone() + ":" + JSON.stringify(cap.font) + ":" + ui.importTick,
   );
 
   let rebuildScheduled = false;
@@ -90,7 +91,12 @@
     f.text().then((t) => {
       try {
         const parsed = JSON.parse(t);
-        importPasses(Array.isArray(parsed) ? parsed : [parsed]);
+        const passes = Array.isArray(parsed) ? parsed : [parsed];
+        // a malformed file would be saved to storage and break the app on every load
+        if (!isPassList(passes)) return alert("That file isn't an export from handwrite.");
+        const n = roundsDone();
+        if (n && !confirm(`Replace your ${n} ${n === 1 ? "round" : "rounds"} with the imported ones?`)) return;
+        importPasses(passes);
       } catch {
         alert("Could not read that file.");
       }

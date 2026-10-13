@@ -21,6 +21,24 @@ import type { CharDef } from "../charsets";
 
 export type Pass = Record<string, InputPoint[][]>; // char -> strokes
 
+/** Shape check for rounds read from a file: a non-empty list of char -> strokes -> points maps. */
+export function isPassList(v: unknown): boolean {
+  const isPoint = (p: unknown) =>
+    typeof p === "object" &&
+    p !== null &&
+    Number.isFinite((p as InputPoint).x) &&
+    Number.isFinite((p as InputPoint).y);
+  const isPass = (pass: unknown) =>
+    typeof pass === "object" &&
+    pass !== null &&
+    !Array.isArray(pass) &&
+    Object.values(pass).every(
+      (strokes) =>
+        Array.isArray(strokes) && strokes.every((s) => Array.isArray(s) && s.every(isPoint)),
+    );
+  return Array.isArray(v) && v.length > 0 && v.every(isPass);
+}
+
 export type VariationMode = "cycle" | "single";
 
 export interface BuildOpts {
