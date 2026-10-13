@@ -291,11 +291,15 @@ export function getStrokes(ch: string): Stroke[] {
  * letter doesn't wipe an earlier capture.
  */
 export function applySentence(targetChars: string[], segments: Stroke[][]) {
+  // one write for the whole round — setStrokes per letter re-serialized the entire store each time
+  const p = { ...cap.passes[cap.activePass] };
   for (let i = 0; i < targetChars.length; i++) {
     if (targetChars[i] === " ") continue; // word gap, not a glyph
     const strokes = segments[i];
-    if (strokes && strokes.length) setStrokes(targetChars[i], strokes);
+    if (strokes && strokes.length) p[targetChars[i]] = strokes;
   }
+  cap.passes[cap.activePass] = p;
+  save();
 }
 /** Onion-skin source: strokes for this char from the most recent earlier pass. */
 export function onionStrokes(ch: string): Stroke[] | null {
