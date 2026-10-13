@@ -16,7 +16,8 @@ import { strokeToRings, type InputPoint, type StrokeOptions } from "../capture/s
 import { fitClosedSmooth, type Pt } from "../capture/simplify";
 import { smoothCenterline, type CenterlineOpts } from "../capture/centerline";
 import { BASELINE_FRAC, CAP_FRAC, VIRT } from "../capture/space";
-import { DEFAULT_METRICS, type GlyphDef, type GlyphOutline, type PathCommand } from "../types";
+import { DEFAULT_METRICS, type GlyphDef, type GlyphOutline } from "../types";
+import { shiftX, xCoords } from "./metrics";
 import type { CharDef } from "../charsets";
 
 export type Pass = Record<string, InputPoint[][]>; // char -> strokes
@@ -70,23 +71,6 @@ const DEFAULTS = {
   variation: "cycle" as VariationMode,
 };
 
-const xs = (cmd: PathCommand): number[] =>
-  cmd.type === "M" || cmd.type === "L"
-    ? [cmd.x]
-    : cmd.type === "Q"
-      ? [cmd.x1, cmd.x]
-      : cmd.type === "C"
-        ? [cmd.x1, cmd.x2, cmd.x]
-        : [];
-const shiftX = (cmd: PathCommand, dx: number): PathCommand =>
-  cmd.type === "M" || cmd.type === "L"
-    ? { ...cmd, x: cmd.x + dx }
-    : cmd.type === "Q"
-      ? { ...cmd, x1: cmd.x1 + dx, x: cmd.x + dx }
-      : cmd.type === "C"
-        ? { ...cmd, x1: cmd.x1 + dx, x2: cmd.x2 + dx, x: cmd.x + dx }
-        : cmd;
-
 /** One captured rendition (its strokes) -> a font-space outline (not yet x-normalized). */
 function normalizeStrokes(strokes: InputPoint[][], opts: Required<BuildOpts>): GlyphOutline {
   // baseline anchored: capture y at BASELINE_FRAC maps to font 0; above is +, below is -
@@ -131,7 +115,7 @@ function normalizeStrokes(strokes: InputPoint[][], opts: Required<BuildOpts>): G
 }
 
 function bounds(o: GlyphOutline) {
-  const allX = o.flatMap(xs);
+  const allX = o.flatMap(xCoords);
   return allX.length ? { min: Math.min(...allX), max: Math.max(...allX) } : { min: 0, max: 0 };
 }
 

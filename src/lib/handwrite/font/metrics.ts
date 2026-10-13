@@ -26,7 +26,7 @@ export interface GlyphWithMetrics {
   inkWidth: number;
 }
 
-function xCoords(cmd: PathCommand): number[] {
+export function xCoords(cmd: PathCommand): number[] {
   switch (cmd.type) {
     case "M":
     case "L":
@@ -40,7 +40,7 @@ function xCoords(cmd: PathCommand): number[] {
   }
 }
 
-function shiftX(cmd: PathCommand, dx: number): PathCommand {
+export function shiftX(cmd: PathCommand, dx: number): PathCommand {
   switch (cmd.type) {
     case "M":
     case "L":
