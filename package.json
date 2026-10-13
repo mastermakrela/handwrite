@@ -17,6 +17,7 @@
     "build": "vite build",
     "preview": "vite preview --host",
     "sync": "svelte-kit sync",
+    "test": "bun app/divide-smoke.ts && bun app/sentence-smoke.ts && bun app/calt-smoke.ts && bun app/import-smoke.ts",
     "format": "oxfmt",
     "lint": "oxfmt --check && oxlint",
     "lint:fix": "oxfmt && oxlint --fix",
