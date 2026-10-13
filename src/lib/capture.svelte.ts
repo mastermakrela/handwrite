@@ -18,6 +18,24 @@ export type Profile = { id: string; name: string };
 const REG_KEY = "handwrite.profiles.v1";
 const LEGACY_KEY = "handwrite.capture.v2";
 const dataKey = (id: string) => `handwrite.capture.v2.${id}`;
+
+// A full or blocked store makes setItem throw. Called from pointer handlers, that
+// used to leave the stroke half-finished and every canvas locked, so catch it and
+// tell the user once instead.
+let warned = false;
+function store(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.error("handwrite: could not save", e);
+    if (warned) return;
+    warned = true;
+    alert(
+      "Your browser won't store any more handwriting, so new strokes are not being saved. " +
+        "Use Preview > Export rounds to keep a copy.",
+    );
+  }
+}
 const newId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
@@ -158,10 +176,7 @@ function loadActiveData() {
   }
 }
 function saveRegistry() {
-  localStorage.setItem(
-    REG_KEY,
-    JSON.stringify({ activeId: profiles.activeId, list: profiles.list }),
-  );
+  store(REG_KEY, JSON.stringify({ activeId: profiles.activeId, list: profiles.list }));
 }
 
 export function load() {
@@ -187,7 +202,7 @@ export function load() {
       ];
       profiles.activeId = youId;
       const legacy = localStorage.getItem(LEGACY_KEY);
-      if (legacy) localStorage.setItem(dataKey(youId), legacy); // (LEGACY_KEY stays as an extra backup)
+      if (legacy) store(dataKey(youId), legacy); // (LEGACY_KEY stays as an extra backup)
       saveRegistry();
     }
     loadActiveData();
@@ -195,7 +210,7 @@ export function load() {
 }
 export function save() {
   if (!profiles.activeId) return;
-  localStorage.setItem(
+  store(
     dataKey(profiles.activeId),
     JSON.stringify({
       passes: cap.passes,
@@ -276,11 +291,15 @@ export function getStrokes(ch: string): Stroke[] {
  * letter doesn't wipe an earlier capture.
  */
 export function applySentence(targetChars: string[], segments: Stroke[][]) {
+  // one write for the whole round — setStrokes per letter re-serialized the entire store each time
+  const p = { ...cap.passes[cap.activePass] };
   for (let i = 0; i < targetChars.length; i++) {
     if (targetChars[i] === " ") continue; // word gap, not a glyph
     const strokes = segments[i];
-    if (strokes && strokes.length) setStrokes(targetChars[i], strokes);
+    if (strokes && strokes.length) p[targetChars[i]] = strokes;
   }
+  cap.passes[cap.activePass] = p;
+  save();
 }
 /** Onion-skin source: strokes for this char from the most recent earlier pass. */
 export function onionStrokes(ch: string): Stroke[] | null {

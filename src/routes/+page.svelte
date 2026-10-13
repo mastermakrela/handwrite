@@ -17,14 +17,14 @@
     name="description"
     content="handwrite turns the letters you draw into a real, installable font (.otf), entirely on your device. Write them on an iPad with an Apple Pencil and export a typeface that looks like your hand."
   />
-  <link rel="canonical" href="https://handwrite.app/" />
+  <link rel="canonical" href="https://handwrite.mastermakrela.com/" />
   <meta property="og:title" content="handwrite — a font that writes like you" />
   <meta
     property="og:description"
     content="Turn your handwriting into a real, installable font. On your device, no account, no upload."
   />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="/icons/icon-512.png" />
+  <meta property="og:image" content="https://handwrite.mastermakrela.com/icons/icon-512.png" />
   <meta name="twitter:card" content="summary" />
   {@html `<script type="application/ld+json">${JSON.stringify({
     "@context": "https://schema.org",
