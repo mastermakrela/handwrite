@@ -37,20 +37,26 @@
   );
 
   let rebuildScheduled = false;
+  let buildGen = 0;
   async function rebuild() {
     if (typeof document === "undefined") return;
+    const gen = ++buildGen;
     building = true;
     try {
       const charDefs = chars();
       const { glyphs, bytes } = buildFontBytes(cap.passes, charDefs, { familyName: "My Handwriting", build: fontBuildOptions() });
       glyphChars = new Set(glyphs.map((g) => g.char));
       if (bytes.length) {
-        prev = await registerPreviewFace(bytes, prev, PREVIEW_FAMILY);
+        const face = await registerPreviewFace(bytes, prev, PREVIEW_FAMILY);
+        // a newer rebuild started while this face loaded; if it finished first, ours would
+        // override it with older glyphs, so drop ours
+        if (gen !== buildGen) disposePreviewFace(face);
+        else prev = face;
       }
     } catch (e) {
       console.error("preview font build failed", e);
     } finally {
-      building = false;
+      if (gen === buildGen) building = false;
     }
   }
   function scheduleRebuild() {
